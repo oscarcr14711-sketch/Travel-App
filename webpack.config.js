@@ -25,6 +25,13 @@ module.exports = {
                 },
             },
             {
+                test: /\.(js|jsx|ts|tsx)$/,
+                type: 'javascript/auto',
+                resolve: {
+                    fullySpecified: false,
+                },
+            },
+            {
                 test: /\.(png|jpe?g|gif|svg|webp|bmp|ico)$/i,
                 type: 'asset/resource',
                 generator: {
