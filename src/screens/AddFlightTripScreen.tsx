@@ -1,7 +1,14 @@
+
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { colors, typography, spacing } from '../theme';
 import { createTrip } from '../services/firebase.service';
+
+import AutocompleteInput from '../components/AutocompleteInput';
+import SmartDateInput from '../components/SmartDateInput';
+import SmartTimeInput from '../components/SmartTimeInput';
+import { AIRPORTS, Airport } from '../data/airports';
+import { AIRLINES, Airline } from '../data/airlines';
 
 export default function AddFlightTripScreen({ navigation, route }: any) {
     const { country } = route.params || { country: 'USA' };
@@ -49,6 +56,20 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
         }
     };
 
+    const renderAirportItem = (item: Airport) => (
+        <View>
+            <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{item.code}</Text>
+            <Text style={{ fontSize: 14, color: '#666' }}>{item.city} - {item.name}</Text>
+        </View>
+    );
+
+    const renderAirlineItem = (item: Airline) => (
+        <View>
+            <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{item.name}</Text>
+            <Text style={{ fontSize: 14, color: '#666' }}>{item.code}</Text>
+        </View>
+    );
+
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -67,39 +88,49 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
             >
                 {/* Form Fields */}
-                <View style={styles.form}>
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.label}>Origin</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g., Los Angeles (LAX)"
-                            placeholderTextColor={colors.neutral.gray400}
+                <View style={[styles.form, { zIndex: 10 }]}>
+                    <View style={{ zIndex: 3 }}>
+                        <AutocompleteInput
+                            label="Origin"
+                            placeholder="Type airport code or city (e.g., JFK)"
+                            data={AIRPORTS}
                             value={origin}
                             onChangeText={setOrigin}
+                            onSelect={(item: Airport) => setOrigin(item.city + ' (' + item.code + ')')}
+                            filterKey="city"
+                            displayKey="code"
+                            renderItem={renderAirportItem}
                         />
                     </View>
 
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.label}>Destination</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g., New York (JFK)"
-                            placeholderTextColor={colors.neutral.gray400}
+                    <View style={{ zIndex: 2 }}>
+                        <AutocompleteInput
+                            label="Destination"
+                            placeholder="Type airport code or city (e.g., LHR)"
+                            data={AIRPORTS}
                             value={destination}
                             onChangeText={setDestination}
+                            onSelect={(item: Airport) => setDestination(item.city + ' (' + item.code + ')')}
+                            filterKey="city"
+                            displayKey="code"
+                            renderItem={renderAirportItem}
                         />
                     </View>
 
-                    <View style={styles.fieldGroup}>
-                        <Text style={styles.label}>Airline</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g., Delta, United, American"
-                            placeholderTextColor={colors.neutral.gray400}
+                    <View style={{ zIndex: 1 }}>
+                        <AutocompleteInput
+                            label="Airline"
+                            placeholder="Type airline name (e.g., Delta)"
+                            data={AIRLINES}
                             value={airline}
                             onChangeText={setAirline}
+                            onSelect={(item: Airline) => setAirline(item.name)}
+                            filterKey="name"
+                            displayKey="name"
+                            renderItem={renderAirlineItem}
                         />
                     </View>
 
@@ -116,22 +147,16 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
 
                     <View style={styles.row}>
                         <View style={[styles.fieldGroup, styles.halfField]}>
-                            <Text style={styles.label}>Departure Date</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="MM/DD/YYYY"
-                                placeholderTextColor={colors.neutral.gray400}
+                            <SmartDateInput
+                                label="Departure Date"
                                 value={departureDate}
                                 onChangeText={setDepartureDate}
                             />
                         </View>
 
                         <View style={[styles.fieldGroup, styles.halfField]}>
-                            <Text style={styles.label}>Departure Time</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="HH:MM"
-                                placeholderTextColor={colors.neutral.gray400}
+                            <SmartTimeInput
+                                label="Departure Time"
                                 value={departureTime}
                                 onChangeText={setDepartureTime}
                             />
@@ -140,22 +165,16 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
 
                     <View style={styles.row}>
                         <View style={[styles.fieldGroup, styles.halfField]}>
-                            <Text style={styles.label}>Arrival Date</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="MM/DD/YYYY"
-                                placeholderTextColor={colors.neutral.gray400}
+                            <SmartDateInput
+                                label="Arrival Date"
                                 value={arrivalDate}
                                 onChangeText={setArrivalDate}
                             />
                         </View>
 
                         <View style={[styles.fieldGroup, styles.halfField]}>
-                            <Text style={styles.label}>Arrival Time</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="HH:MM"
-                                placeholderTextColor={colors.neutral.gray400}
+                            <SmartTimeInput
+                                label="Arrival Time"
                                 value={arrivalTime}
                                 onChangeText={setArrivalTime}
                             />
