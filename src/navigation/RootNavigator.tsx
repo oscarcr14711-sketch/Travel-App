@@ -5,6 +5,8 @@ import TabNavigator from './TabNavigator';
 import TransportationSelectionScreen from '../screens/TransportationSelectionScreen';
 import AddFlightTripScreen from '../screens/AddFlightTripScreen';
 import AddBusTripScreen from '../screens/AddBusTripScreen';
+import TripDetailScreen from '../screens/TripDetailScreen';
+import FlightAmenitiesScreen from '../screens/FlightAmenitiesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,7 +31,16 @@ export default function RootNavigator() {
                     name="AddBusTrip"
                     component={AddBusTripScreen}
                 />
+                <Stack.Screen
+                    name="TripDetail"
+                    component={TripDetailScreen}
+                />
+                <Stack.Screen
+                    name="FlightAmenities"
+                    component={FlightAmenitiesScreen}
+                />
             </Stack.Navigator>
         </NavigationContainer>
     );
 }
+

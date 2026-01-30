@@ -89,12 +89,19 @@ export default function TripsScreen({ navigation, route }: any) {
                                     key={trip.id}
                                     trip={trip}
                                     onDelete={handleDeleteTrip}
+                                    onViewDetails={() => navigation.navigate('TripDetail', { trip })}
+                                    onViewAmenities={() => navigation.navigate('FlightAmenities', {
+                                        flightNumber: trip.flightNumber || `${trip.airline?.slice(0, 2) || 'XX'}${Math.random().toString().slice(2, 6)}`,
+                                        departureDate: trip.departureDate,
+                                        airline: trip.airline,
+                                    })}
                                 />
                             ) : (
                                 <BusTicketCard
                                     key={trip.id}
                                     trip={trip}
                                     onDelete={handleDeleteTrip}
+                                    onViewDetails={() => navigation.navigate('TripDetail', { trip })}
                                 />
                             )
                         ))}

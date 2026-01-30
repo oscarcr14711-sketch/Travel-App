@@ -1,64 +1,133 @@
 /**
- * Utility to get airline and bus company logos
- * Uses Clearbit Logo API for dynamic fetching with failover
+ * Airline and bus company emoji and color mappings
+ * Safe for App Store - no trademark issues with emojis!
  */
 
-// Map of common airline/bus company names to their domains/logo URLs
-// This helps ensure better accuracy than just guessing the domain
-const COMPANY_DOMAIN_MAP: Record<string, string> = {
-    // Airlines
-    'delta': 'delta.com',
-    'united': 'united.com',
-    'american': 'aa.com',
-    'american airlines': 'aa.com',
-    'southwest': 'southwest.com',
-    'jetblue': 'jetblue.com',
-    'alaska': 'alaskaair.com',
-    'spirit': 'spirit.com',
-    'frontier': 'flyfrontier.com',
-    'british airways': 'britishairways.com',
-    'lufthansa': 'lufthansa.com',
-    'air france': 'airfrance.com',
-    'emirates': 'emirates.com',
-    'qatar': 'qatarairways.com',
-    'singapore airlines': 'singaporeair.com',
-    'aeromexico': 'aeromexico.com',
-    'volaris': 'volaris.com',
-    'viva aerobus': 'vivaaerobus.com',
+// Airline emoji mapping
+const AIRLINE_EMOJI_MAP: Record<string, string> = {
+    // USA AIRLINES
+    'delta': '🔺',
+    'delta airlines': '🔺',
+    'delta air lines': '🔺',
 
-    // Bus Companies
-    'greyhound': 'greyhound.com',
-    'megabus': 'megabus.com',
-    'flixbus': 'flixbus.com',
-    'boltbus': 'boltbus.com',
-    'tornado bus': 'tornadobus.com',
-    'el expreso': 'elexpreso.com',
-    'omex vip': 'omexvip.com',
-    'ado': 'ado.com.mx',
-    'etn': 'etn.com.mx',
-    'primera plus': 'primeraplus.com.mx',
-    'futura': 'futura.com.mx',
+    'united': '🌐',
+    'united airlines': '🌐',
+
+    'american': '🦅',
+    'american airlines': '🦅',
+    'aa': '🦅',
+
+    'southwest': '❤️',
+    'southwest airlines': '❤️',
+
+    'jetblue': '💙',
+    'jet blue': '💙',
+    'jetblue airways': '💙',
+
+    'alaska': '🏔️',
+    'alaska airlines': '🏔️',
+
+    'spirit': '💛',
+    'spirit airlines': '💛',
+
+    'frontier': '🦌',
+    'frontier airlines': '🦌',
+
+    'hawaiian': '🌺',
+    'hawaiian airlines': '🌺',
+
+    'allegiant': '☀️',
+    'allegiant air': '☀️',
+
+    'sun country': '🌞',
+    'breeze': '🌊',
+    'avelo': '🎯',
+
+    // MEXICO AIRLINES
+    'aeromexico': '🇲🇽',
+    'aeroméxico': '🇲🇽',
+
+    'volaris': '💜',
+
+    'viva aerobus': '🟢',
+    'vivaaerobus': '🟢',
+    'viva': '🟢',
+
+    'tar': '⭐',
+    'magnicharters': '🔶',
+    'mexicana': '🇲🇽',
+
+    // INTERNATIONAL
+    'air canada': '🍁',
+    'british airways': '🇬🇧',
+    'lufthansa': '🇩🇪',
+    'air france': '🇫🇷',
+    'klm': '🇳🇱',
+    'emirates': '🇦🇪',
+    'qatar': '🇶🇦',
+};
+
+// Bus company emoji mapping
+const BUS_EMOJI_MAP: Record<string, string> = {
+    'greyhound': '🐕',
+    'megabus': '🔵',
+    'flixbus': '💚',
+    'tornado': '🌪️',
+    'ado': '🔴',
+    'etn': '⭐',
+    'primera plus': '🔷',
+    'futura': '🚀',
+    'boltbus': '⚡',
 };
 
 /**
- * Get the logo URL for a given company name
- * @param companyName Name of the airline or bus company
- * @returns URL string for the logo
+ * Get airline emoji
  */
-export const getCompanyLogoUrl = (companyName: string): string | null => {
-    if (!companyName) return null;
+export const getAirlineEmoji = (airlineName: string): string => {
+    if (!airlineName) return '✈️';
+    const normalized = airlineName.toLowerCase().trim();
+    return AIRLINE_EMOJI_MAP[normalized] || '✈️';
+};
 
-    const normalizedName = companyName.toLowerCase().trim();
+/**
+ * Get bus company emoji
+ */
+export const getBusEmoji = (companyName: string): string => {
+    if (!companyName) return '🚌';
+    const normalized = companyName.toLowerCase().trim();
+    return BUS_EMOJI_MAP[normalized] || '🚌';
+};
 
-    // Check if we have a direct mapping
-    const domain = COMPANY_DOMAIN_MAP[normalizedName];
+/**
+ * Get airline-specific gradient colors
+ */
+export const getAirlineColors = (airlineName: string): string[] => {
+    const name = airlineName?.toLowerCase() || '';
 
-    if (domain) {
-        return `https://logo.clearbit.com/${domain}`;
-    }
+    if (name.includes('delta')) return ['#C8102E', '#E31837', '#FF4458'];
+    if (name.includes('united')) return ['#001E62', '#002244', '#003D82'];
+    if (name.includes('american')) return ['#0078D2', '#1890D5', '#3AA7E8'];
+    if (name.includes('southwest')) return ['#304CB2', '#3D5DC7', '#4A6FDB'];
+    if (name.includes('jetblue')) return ['#002F5F', '#003F7F', '#005498'];
+    if (name.includes('alaska')) return ['#006272', '#007287', '#00829B'];
+    if (name.includes('spirit')) return ['#FFD100', '#FFDB33', '#FFE566'];
+    if (name.includes('aeromexico')) return ['#C8102E', '#E31837', '#FF4458'];
+    if (name.includes('volaris')) return ['#4A0E4E', '#6B1E6F', '#8B2E8F'];
+    if (name.includes('viva')) return ['#00A550', '#00B85C', '#00CB68'];
 
-    // If no mapping, try to guess the domain (basic)
-    // This removes spaces and adds .com, which works for many simple names
-    const guessedDomain = `${normalizedName.replace(/\s+/g, '')}.com`;
-    return `https://logo.clearbit.com/${guessedDomain}`;
+    return ['#1e3c72', '#2a5298', '#3b6cb7'];
+};
+
+/**
+ * Get bus company gradient colors
+ */
+export const getBusColors = (companyName: string): string[] => {
+    const name = companyName?.toLowerCase() || '';
+
+    if (name.includes('greyhound')) return ['#003C71', '#004D8F', '#005EAD'];
+    if (name.includes('flixbus')) return ['#73D700', '#86E214', '#99ED28'];
+    if (name.includes('megabus')) return ['#0066CC', '#1A7ADB', '#338EEA'];
+    if (name.includes('ado')) return ['#C8102E', '#E31837', '#FF4458'];
+
+    return ['#059669', '#10B981', '#34D399'];
 };

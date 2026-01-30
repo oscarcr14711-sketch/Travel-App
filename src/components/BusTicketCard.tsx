@@ -1,283 +1,351 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { colors, typography, spacing } from '../theme';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Trip } from '../types/trip.types';
-import { getCompanyLogoUrl } from '../utils/logoMapper';
+import { getBusColors } from '../utils/logoMapper';
 
 interface BusTicketCardProps {
     trip: Trip;
     onDelete: (id: string) => void;
+    onViewDetails?: () => void;
 }
 
-export default function BusTicketCard({ trip, onDelete }: BusTicketCardProps) {
+export default function BusTicketCard({ trip, onDelete, onViewDetails }: BusTicketCardProps) {
     const [timeRemaining, setTimeRemaining] = useState('');
+    const [duration, setDuration] = useState('');
 
     useEffect(() => {
         const calculateTimeRemaining = () => {
-            const departureDateTime = new Date(`${trip.departureDate} ${trip.departureTime}`);
-            const now = new Date();
-            const diff = departureDateTime.getTime() - now.getTime();
+            try {
+                const departureDateTime = new Date(`${trip.departureDate} ${trip.departureTime}`);
+                const now = new Date();
+                const diff = departureDateTime.getTime() - now.getTime();
 
-            if (diff < 0) {
-                setTimeRemaining('Departed');
-                return;
+                if (isNaN(diff) || diff < 0) {
+                    setTimeRemaining('Departed');
+                    return;
+                }
+
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+                if (days > 0) {
+                    setTimeRemaining(`${days}d ${hours}h`);
+                } else if (hours > 0) {
+                    setTimeRemaining(`${hours}h ${minutes}m`);
+                } else if (minutes > 0) {
+                    setTimeRemaining(`${minutes}m`);
+                } else {
+                    setTimeRemaining('Soon');
+                }
+            } catch {
+                setTimeRemaining('--');
             }
+        };
 
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const calculateDuration = () => {
+            try {
+                const departureDateTime = new Date(`${trip.departureDate} ${trip.departureTime}`);
+                const arrivalDateTime = new Date(`${trip.arrivalDate} ${trip.arrivalTime}`);
+                const diff = arrivalDateTime.getTime() - departureDateTime.getTime();
 
-            if (days > 0) {
-                setTimeRemaining(`${days}d ${hours}h`);
-            } else if (hours > 0) {
-                setTimeRemaining(`${hours}h ${minutes}m`);
-            } else {
-                setTimeRemaining(`${minutes}m`);
+                if (isNaN(diff) || diff <= 0) {
+                    setDuration('Direct');
+                    return;
+                }
+
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+                if (hours > 0) {
+                    setDuration(`${hours}h ${minutes}m`);
+                } else {
+                    setDuration(`${minutes}m`);
+                }
+            } catch {
+                setDuration('--');
             }
         };
 
         calculateTimeRemaining();
+        calculateDuration();
         const interval = setInterval(calculateTimeRemaining, 60000);
 
         return () => clearInterval(interval);
-    }, [trip.departureDate, trip.departureTime]);
+    }, [trip]);
+
+    const gradientColors = getBusColors(trip.busCompany || '') as [string, string, ...string[]];
+    const origin = trip.origin || trip.departureStation || 'Origin';
+    const destination = trip.destination || trip.arrivalStation || 'Destination';
 
     return (
-        <View style={styles.card}>
-            {/* Header with bus company and countdown */}
-            <View style={styles.header}>
-                <View style={styles.companySection}>
-                    <View style={styles.logoContainer}>
-                        <Image
-                            source={{ uri: getCompanyLogoUrl(trip.busCompany || '') || '' }}
-                            style={styles.logo}
-                            resizeMode="contain"
-                        />
+        <View style={styles.cardContainer}>
+            <LinearGradient
+                colors={gradientColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.card}
+            >
+                {/* Header Row */}
+                <View style={styles.header}>
+                    <View style={styles.companyInfo}>
+                        <View style={styles.companyTextContainer}>
+                            <Text style={styles.companyName}>{trip.busCompany || 'Bus'}</Text>
+                            {trip.busNumber && (
+                                <Text style={styles.busNumber}>Bus #{trip.busNumber}</Text>
+                            )}
+                        </View>
                     </View>
-                    <Text style={styles.companyName}>{trip.busCompany}</Text>
-                </View>
-                <View style={styles.countdownBadge}>
-                    <Text style={styles.countdownText}>{timeRemaining}</Text>
-                </View>
-            </View>
-
-            {/* Route details */}
-            <View style={styles.detailsSection}>
-                <View style={styles.routeInfo}>
-                    <View style={styles.locationBlock}>
-                        <Text style={styles.locationLabel}>From</Text>
-                        <Text style={styles.locationText}>
-                            {trip.origin || trip.departureStation || 'Origin'}
-                        </Text>
-                    </View>
-                    <View style={styles.arrowContainer}>
-                        <Text style={styles.arrow}>→</Text>
-                    </View>
-                    <View style={styles.locationBlock}>
-                        <Text style={styles.locationLabel}>To</Text>
-                        <Text style={styles.locationText}>
-                            {trip.arrivalStation || trip.destination}
-                        </Text>
-                    </View>
+                    {timeRemaining !== 'Departed' && (
+                        <View style={styles.countdownBadge}>
+                            <Text style={styles.countdownLabel}>Departs in</Text>
+                            <Text style={styles.countdownValue}>{timeRemaining}</Text>
+                        </View>
+                    )}
                 </View>
 
-                {/* Time info */}
-                <View style={styles.timeInfo}>
-                    <View style={styles.timeBlock}>
-                        <Text style={styles.timeLabel}>Departure</Text>
-                        <Text style={styles.timeValue}>{trip.departureTime}</Text>
+                {/* Route Section */}
+                <View style={styles.routeSection}>
+                    <View style={styles.routeEndpoint}>
+                        <Text style={styles.cityCode}>{origin.slice(0, 3).toUpperCase()}</Text>
+                        <Text style={styles.cityName} numberOfLines={1}>{origin}</Text>
+                        <Text style={styles.timeText}>{trip.departureTime}</Text>
+                    </View>
+
+                    <View style={styles.routeMiddle}>
+                        <View style={styles.routeLine}>
+                            <View style={styles.routeDot} />
+                            <View style={styles.dottedLine} />
+                            <Text style={styles.busIcon}>🚌</Text>
+                            <View style={styles.dottedLine} />
+                            <View style={styles.routeDot} />
+                        </View>
+                        <Text style={styles.durationText}>{duration}</Text>
+                    </View>
+
+                    <View style={styles.routeEndpoint}>
+                        <Text style={styles.cityCode}>{destination.slice(0, 3).toUpperCase()}</Text>
+                        <Text style={styles.cityName} numberOfLines={1}>{destination}</Text>
+                        <Text style={styles.timeText}>{trip.arrivalTime || '--:--'}</Text>
+                    </View>
+                </View>
+
+                {/* Date Row */}
+                <View style={styles.dateRow}>
+                    <View style={styles.dateItem}>
+                        <Text style={styles.dateLabel}>📅 Departure</Text>
                         <Text style={styles.dateValue}>{trip.departureDate}</Text>
                     </View>
-                    {trip.arrivalTime && (
-                        <View style={styles.timeBlock}>
-                            <Text style={styles.timeLabel}>Arrival</Text>
-                            <Text style={styles.timeValue}>{trip.arrivalTime}</Text>
+                    {trip.arrivalDate && (
+                        <View style={styles.dateItem}>
+                            <Text style={styles.dateLabel}>📅 Arrival</Text>
                             <Text style={styles.dateValue}>{trip.arrivalDate}</Text>
                         </View>
                     )}
                 </View>
 
-                {/* Bus number */}
-                {trip.busNumber && (
-                    <View style={styles.busNumberSection}>
-                        <Text style={styles.busNumberLabel}>Bus</Text>
-                        <Text style={styles.busNumberValue}>{trip.busNumber}</Text>
-                    </View>
-                )}
-            </View>
+                {/* Ticket Tear Line */}
+                <View style={styles.tearLine}>
+                    {Array.from({ length: 20 }).map((_, i) => (
+                        <View key={i} style={styles.tearDot} />
+                    ))}
+                </View>
 
-            {/* Footer note */}
-            <View style={styles.footer}>
-                <Text style={styles.footerNote}>
-                    📱 This digital ticket can be shown to the driver
-                </Text>
-                <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => onDelete(trip.id)}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
-                </TouchableOpacity>
-            </View>
+                {/* Footer */}
+                <View style={styles.footer}>
+                    {onViewDetails && (
+                        <TouchableOpacity style={styles.viewDetailsBtn} onPress={onViewDetails}>
+                            <Text style={styles.viewDetailsBtnText}>View Details →</Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity style={styles.deleteBtn} onPress={() => onDelete(trip.id)}>
+                        <Text style={styles.deleteBtnText}>🗑️</Text>
+                    </TouchableOpacity>
+                </View>
+            </LinearGradient>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
+    cardContainer: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 20,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 8 },
+                shadowOpacity: 0.3,
+                shadowRadius: 16,
+            },
+            android: {
+                elevation: 12,
+            },
+        }),
+    },
     card: {
-        backgroundColor: colors.neutral.white,
-        borderRadius: 16,
-        marginHorizontal: spacing.lg,
-        marginBottom: spacing.lg,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        borderRadius: 20,
+        padding: 20,
         overflow: 'hidden',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: spacing.lg,
-        backgroundColor: '#10B981',
+        alignItems: 'flex-start',
+        marginBottom: 24,
     },
-    companySection: {
+    companyInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: spacing.sm,
+        flex: 1,
     },
-    logoContainer: {
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: colors.neutral.white,
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    logo: {
-        width: 24,
-        height: 24,
-    },
-    companyEmoji: {
-        fontSize: 24,
+    companyTextContainer: {
+        flex: 1,
     },
     companyName: {
-        ...typography.styles.h4,
-        fontSize: 18,
+        fontSize: 19,
         fontWeight: '700',
-        color: colors.neutral.white,
+        color: '#fff',
+    },
+    busNumber: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.85)',
+        marginTop: 3,
+        fontWeight: '500',
     },
     countdownBadge: {
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.xs,
+        backgroundColor: 'rgba(255,255,255,0.25)',
         borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
-    countdownText: {
-        ...typography.styles.bodySmall,
-        fontSize: 14,
+    countdownLabel: {
+        fontSize: 10,
+        color: 'rgba(255,255,255,0.9)',
+        marginBottom: 2,
         fontWeight: '600',
-        color: colors.neutral.white,
     },
-    detailsSection: {
-        padding: spacing.lg,
-        gap: spacing.lg,
+    countdownValue: {
+        fontSize: 17,
+        fontWeight: '800',
+        color: '#fff',
     },
-    routeInfo: {
+    routeSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    routeEndpoint: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    cityCode: {
+        fontSize: 30,
+        fontWeight: '900',
+        color: '#fff',
+        letterSpacing: 1,
+    },
+    cityName: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.85)',
+        marginTop: 4,
+        textAlign: 'center',
+    },
+    timeText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#fff',
+        marginTop: 6,
+    },
+    routeMiddle: {
+        flex: 1.2,
+        alignItems: 'center',
+    },
+    routeLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+    },
+    routeDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: 'rgba(255,255,255,0.7)',
+    },
+    dottedLine: {
+        flex: 1,
+        height: 2,
+        backgroundColor: 'rgba(255,255,255,0.4)',
+    },
+    busIcon: {
+        fontSize: 22,
+        marginHorizontal: 4,
+    },
+    durationText: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.85)',
+        marginTop: 8,
+        fontWeight: '600',
+    },
+    dateRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+    },
+    dateItem: {
+        alignItems: 'center',
+    },
+    dateLabel: {
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.8)',
+        marginBottom: 4,
+    },
+    dateValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    tearLine: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    tearDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+    },
+    footer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    locationBlock: {
-        flex: 1,
+    viewDetailsBtn: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
-    locationLabel: {
-        ...typography.styles.bodySmall,
-        fontSize: 12,
-        color: colors.neutral.gray500,
-        marginBottom: spacing.xs,
-    },
-    locationText: {
-        ...typography.styles.h5,
-        fontSize: 16,
+    viewDetailsBtnText: {
+        fontSize: 13,
         fontWeight: '600',
-        color: colors.neutral.gray800,
+        color: '#fff',
     },
-    arrowContainer: {
-        paddingHorizontal: spacing.md,
+    deleteBtn: {
+        padding: 8,
     },
-    arrow: {
-        fontSize: 24,
-        color: colors.neutral.gray400,
-    },
-    timeInfo: {
-        flexDirection: 'row',
-        gap: spacing.lg,
-    },
-    timeBlock: {
-        flex: 1,
-        backgroundColor: colors.light.surface,
-        padding: spacing.md,
-        borderRadius: 12,
-    },
-    timeLabel: {
-        ...typography.styles.bodySmall,
-        fontSize: 12,
-        color: colors.neutral.gray500,
-        marginBottom: spacing.xs,
-    },
-    timeValue: {
-        ...typography.styles.h4,
-        fontSize: 18,
-        fontWeight: '700',
-        color: colors.neutral.gray800,
-    },
-    dateValue: {
-        ...typography.styles.bodySmall,
-        fontSize: 12,
-        color: colors.neutral.gray600,
-        marginTop: spacing.xs,
-    },
-    busNumberSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    busNumberLabel: {
-        ...typography.styles.body,
-        fontSize: 14,
-        color: colors.neutral.gray600,
-    },
-    busNumberValue: {
-        ...typography.styles.body,
-        fontSize: 14,
-        fontWeight: '600',
-        color: colors.neutral.gray800,
-    },
-    footer: {
-        backgroundColor: '#D1FAE5',
-        padding: spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: colors.light.border,
-    },
-    footerNote: {
-        ...typography.styles.bodySmall,
-        fontSize: 12,
-        color: '#065F46',
-        textAlign: 'center',
-    },
-    deleteButton: {
-        marginTop: spacing.md,
-        alignSelf: 'center',
-        paddingVertical: spacing.xs,
-        paddingHorizontal: spacing.sm,
-    },
-    deleteButtonText: {
-        fontSize: 12,
-        color: colors.semantic.error,
-        fontWeight: '600',
+    deleteBtnText: {
+        fontSize: 20,
     },
 });
