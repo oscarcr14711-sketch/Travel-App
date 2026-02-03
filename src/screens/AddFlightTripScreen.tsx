@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { colors, typography, spacing } from '../theme';
 import { createTrip } from '../services/firebase.service';
+import { CabinClass } from '../types/trip.types';
 
 import AutocompleteInput from '../components/AutocompleteInput';
 import SmartDateInput from '../components/SmartDateInput';
@@ -17,6 +18,7 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
     const [origin, setOrigin] = useState('');
     const [flightNumber, setFlightNumber] = useState('');
     const [airline, setAirline] = useState('');
+    const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
     const [departureDate, setDepartureDate] = useState('');
     const [departureTime, setDepartureTime] = useState('');
     const [arrivalDate, setArrivalDate] = useState('');
@@ -40,6 +42,7 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
                 destination,
                 flightNumber,
                 airline,
+                cabinClass,
                 departureDate,
                 departureTime,
                 arrivalDate: arrivalDate || departureDate,
@@ -143,6 +146,68 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
                             value={flightNumber}
                             onChangeText={setFlightNumber}
                         />
+                    </View>
+
+                    {/* Cabin Class Selector */}
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.label}>Cabin Class</Text>
+                        <View style={styles.cabinClassContainer}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.cabinClassButton,
+                                    cabinClass === 'economy' && styles.cabinClassButtonActive
+                                ]}
+                                onPress={() => setCabinClass('economy')}
+                            >
+                                <Text style={styles.cabinClassIcon}>💺</Text>
+                                <Text style={[
+                                    styles.cabinClassText,
+                                    cabinClass === 'economy' && styles.cabinClassTextActive
+                                ]}>Economy</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.cabinClassButton,
+                                    cabinClass === 'premium_economy' && styles.cabinClassButtonActive
+                                ]}
+                                onPress={() => setCabinClass('premium_economy')}
+                            >
+                                <Text style={styles.cabinClassIcon}>✈️</Text>
+                                <Text style={[
+                                    styles.cabinClassText,
+                                    cabinClass === 'premium_economy' && styles.cabinClassTextActive
+                                ]}>Premium</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.cabinClassButton,
+                                    cabinClass === 'business' && styles.cabinClassButtonActive
+                                ]}
+                                onPress={() => setCabinClass('business')}
+                            >
+                                <Text style={styles.cabinClassIcon}>🛫</Text>
+                                <Text style={[
+                                    styles.cabinClassText,
+                                    cabinClass === 'business' && styles.cabinClassTextActive
+                                ]}>Business</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    styles.cabinClassButton,
+                                    cabinClass === 'first' && styles.cabinClassButtonActive
+                                ]}
+                                onPress={() => setCabinClass('first')}
+                            >
+                                <Text style={styles.cabinClassIcon}>👑</Text>
+                                <Text style={[
+                                    styles.cabinClassText,
+                                    cabinClass === 'first' && styles.cabinClassTextActive
+                                ]}>First</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <View style={styles.row}>
@@ -283,5 +348,70 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
         color: colors.neutral.white,
+    },
+    cabinClassContainer: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    cabinClassButton: {
+        flex: 1,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        backgroundColor: '#f3f4f6',
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    cabinClassButtonActive: {
+        backgroundColor: '#3B82F6',
+        borderColor: '#2563EB',
+    },
+    cabinClassIcon: {
+        fontSize: 24,
+        marginBottom: 4,
+    },
+    cabinClassText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#6b7280',
+    },
+    cabinClassTextActive: {
+        color: '#ffffff',
+    },
+    aircraftGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    aircraftChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: '#f3f4f6',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    aircraftChipActive: {
+        backgroundColor: '#3B82F6',
+        borderColor: '#3B82F6',
+    },
+    aircraftChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6b7280',
+    },
+    aircraftChipTextActive: {
+        color: '#ffffff',
+    },
+    aircraftHint: {
+        fontSize: 12,
+        color: '#9ca3af',
+        marginTop: 8,
+        fontStyle: 'italic',
     },
 });

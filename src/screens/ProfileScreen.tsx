@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { colors, typography, spacing } from '../theme';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: any) {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -11,6 +11,18 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView style={styles.content}>
+                {/* Travel Stats Menu Item */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Travel</Text>
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => navigation.navigate('TravelStats')}
+                    >
+                        <Text style={styles.menuText}>📊 My Travel Stats</Text>
+                        <Text style={styles.menuArrow}>›</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Account</Text>
                     <View style={styles.menuItem}>
@@ -84,5 +96,11 @@ const styles = StyleSheet.create({
     menuText: {
         ...typography.styles.body,
         color: colors.light.text,
+        flex: 1,
+    },
+    menuArrow: {
+        fontSize: 24,
+        color: colors.light.textSecondary,
+        fontWeight: '300',
     },
 });

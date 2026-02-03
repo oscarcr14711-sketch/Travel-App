@@ -5,12 +5,7 @@ import { colors, typography, spacing } from '../theme';
 export default function HomeScreen({ navigation }: any) {
     const handleCountrySelect = (country: 'USA' | 'Mexico') => {
         console.log(`Selected country: ${country}`);
-        if (country === 'USA') {
-            navigation.navigate('TransportationSelection', { country });
-        } else {
-            // TODO: Handle Mexico selection - maybe different flow or same screen
-            console.log('Mexico selected - navigation to be implemented');
-        }
+        navigation.navigate('TransportationSelection', { country });
     };
 
     return (

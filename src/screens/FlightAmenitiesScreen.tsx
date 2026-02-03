@@ -1,87 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Platform, Image } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getFlightData, getAircraftAmenities, FlightData, AircraftAmenities, getFlightStatusColor } from '../services/flight.service';
+import { getAircraftData, getClassAmenities, ClassAmenities } from '../data/aircraft.data';
+import { CabinClass } from '../types/trip.types';
 
-export default function FlightAmenitiesScreen({ route }: any) {
-    const { flightNumber, departureDate, airline } = route.params;
-    const [loading, setLoading] = useState(true);
-    const [flightData, setFlightData] = useState<FlightData | null>(null);
-    const [amenities, setAmenities] = useState<AircraftAmenities | null>(null);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        loadFlightData();
-    }, []);
-
-    const loadFlightData = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            // Fetch real-time flight data
-            const data = await getFlightData(flightNumber, departureDate);
-
-            if (data) {
-                setFlightData(data);
-                // Get amenities based on aircraft model
-                if (data.aircraft?.model) {
-                    const amenitiesData = getAircraftAmenities(data.aircraft.model, data.airline);
-                    setAmenities(amenitiesData);
-                }
-            } else {
-                // If no data from API, use fallback
-                setError('Flight data not yet available. Showing typical aircraft information.');
-                // Use default amenities for the airline
-                const defaultAmenities = getAircraftAmenities('A320', airline || 'Unknown');
-                setAmenities(defaultAmenities);
-            }
-        } catch (err) {
-            console.error('Error loading flight data:', err);
-            setError('Unable to fetch flight information');
-        } finally {
-            setLoading(false);
-        }
+// Helper to format cabin class name
+const getCabinClassName = (cabinClass: CabinClass): string => {
+    const names: Record<CabinClass, string> = {
+        economy: 'Economy',
+        premium_economy: 'Premium Economy',
+        business: 'Business Class',
+        first: 'First Class'
     };
+    return names[cabinClass];
+};
 
-    const renderStatusBadge = () => {
-        if (!flightData) return null;
-        const color = getFlightStatusColor(flightData.status);
+// Helper to get cabin class icon
+const getCabinClassIcon = (cabinClass: CabinClass): string => {
+    const icons: Record<CabinClass, string> = {
+        economy: '💺',
+        premium_economy: '✈️',
+        business: '🛫',
+        first: '👑'
+    };
+    return icons[cabinClass];
+};
+
+export default function FlightAmenitiesScreen({ route, navigation }: any) {
+    const { trip } = route.params;
+
+    // Use the aircraft model from the trip, or default to A320 if not specified
+    const aircraftModel = trip.aircraftModel || 'A320';
+    const cabinClass: CabinClass = trip.cabinClass || 'economy';
+
+    const aircraft = getAircraftData(aircraftModel);
+    const amenities = getClassAmenities(aircraftModel, cabinClass);
+
+    const renderFeatureList = (title: string, icon: string, items: string[]) => {
+        if (!items || items.length === 0) return null;
 
         return (
-            <View style={[styles.statusBadge, { backgroundColor: color }]}>
-                <Text style={styles.statusText}>{flightData.status}</Text>
+            <View style={styles.featureSection}>
+                <Text style={styles.featureSectionTitle}>{icon} {title}</Text>
+                {items.map((item, index) => (
+                    <View key={index} style={styles.featureItem}>
+                        <Text style={styles.featureBullet}>•</Text>
+                        <Text style={styles.featureText}>{item}</Text>
+                    </View>
+                ))}
             </View>
         );
     };
 
-    const renderAmenityCard = (
-        icon: string,
-        title: string,
-        value: string,
-        description?: string,
-        available?: boolean
-    ) => (
-        <View style={styles.amenityCard}>
-            <View style={styles.amenityHeader}>
-                <Text style={styles.amenityIcon}>{icon}</Text>
-                <View style={styles.amenityTitleContainer}>
-                    <Text style={styles.amenityTitle}>{title}</Text>
-                    {available !== undefined && (
-                        <View style={[styles.availabilityDot, { backgroundColor: available ? '#4CAF50' : '#9E9E9E' }]} />
-                    )}
+    const renderSeatDetails = (amenities: ClassAmenities) => (
+        <View style={styles.card}>
+            <Text style={styles.cardTitle}>💺 Seating Details</Text>
+            <View style={styles.seatGrid}>
+                <View style={styles.seatStat}>
+                    <Text style={styles.seatStatLabel}>Seat Type</Text>
+                    <Text style={styles.seatStatValue}>{amenities.seatType}</Text>
+                </View>
+                <View style={styles.seatStat}>
+                    <Text style={styles.seatStatLabel}>Width</Text>
+                    <Text style={styles.seatStatValue}>{amenities.seatWidth}</Text>
+                </View>
+                <View style={styles.seatStat}>
+                    <Text style={styles.seatStatLabel}>Pitch</Text>
+                    <Text style={styles.seatStatValue}>{amenities.seatPitch}</Text>
+                </View>
+                <View style={styles.seatStat}>
+                    <Text style={styles.seatStatLabel}>Recline</Text>
+                    <Text style={styles.seatStatValue}>{amenities.recline}</Text>
                 </View>
             </View>
-            <Text style={styles.amenityValue}>{value}</Text>
-            {description && <Text style={styles.amenityDescription}>{description}</Text>}
         </View>
     );
 
-    if (loading) {
+    if (!amenities) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1e3c72" />
-                <Text style={styles.loadingText}>Fetching flight information...</Text>
+            <View style={styles.container}>
+                <LinearGradient colors={['#1e3c72', '#2a5298']} style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Text style={styles.backText}>← Back</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Flight Amenities</Text>
+                </LinearGradient>
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorIcon}>⚠️</Text>
+                    <Text style={styles.errorText}>Amenities data not available for this cabin class</Text>
+                </View>
             </View>
         );
     }
@@ -89,145 +96,76 @@ export default function FlightAmenitiesScreen({ route }: any) {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <LinearGradient
-                colors={['#1e3c72', '#2a5298']}
-                style={styles.header}
-            >
+            <LinearGradient colors={['#1e3c72', '#2a5298']} style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <Text style={styles.backText}>← Back</Text>
+                </TouchableOpacity>
                 <View style={styles.headerContent}>
-                    <Text style={styles.headerFlightNumber}>{flightNumber}</Text>
-                    <Text style={styles.headerAirline}>{flightData?.airline || airline || 'Airline'}</Text>
-                    {renderStatusBadge()}
+                    <Text style={styles.headerTitle}>✈️ {trip.airline || 'Flight'} {trip.flightNumber}</Text>
+                    <Text style={styles.headerSubtitle}>{trip.origin} → {trip.destination}</Text>
                 </View>
             </LinearGradient>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                {error && (
-                    <View style={styles.errorBanner}>
-                        <Text style={styles.errorIcon}>ℹ️</Text>
-                        <Text style={styles.errorText}>{error}</Text>
+                {/* Cabin Class Banner */}
+                <View style={styles.classBanner}>
+                    <Text style={styles.classBannerIcon}>{getCabinClassIcon(cabinClass)}</Text>
+                    <View style={styles.classBannerText}>
+                        <Text style={styles.classBannerTitle}>Your Cabin Class</Text>
+                        <Text style={styles.classBannerClass}>{getCabinClassName(cabinClass)}</Text>
                     </View>
-                )}
+                </View>
 
-                {/* Flight Route Card */}
-                {flightData && (
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>✈️ Flight Route</Text>
-                        <View style={styles.routeContainer}>
-                            <View style={styles.routePoint}>
-                                <Text style={styles.routeCode}>{flightData.departure.airportCode}</Text>
-                                <Text style={styles.routeAirport} numberOfLines={2}>{flightData.departure.airport}</Text>
-                                {flightData.departure.terminal && (
-                                    <Text style={styles.routeTerminal}>Terminal {flightData.departure.terminal}</Text>
-                                )}
-                                {flightData.departure.gate && (
-                                    <Text style={styles.routeGate}>Gate {flightData.departure.gate}</Text>
-                                )}
-                            </View>
-                            <View style={styles.routeArrow}>
-                                <Text style={styles.routeArrowIcon}>→</Text>
-                            </View>
-                            <View style={styles.routePoint}>
-                                <Text style={styles.routeCode}>{flightData.arrival.airportCode}</Text>
-                                <Text style={styles.routeAirport} numberOfLines={2}>{flightData.arrival.airport}</Text>
-                                {flightData.arrival.terminal && (
-                                    <Text style={styles.routeTerminal}>Terminal {flightData.arrival.terminal}</Text>
-                                )}
-                                {flightData.arrival.gate && (
-                                    <Text style={styles.routeGate}>Gate {flightData.arrival.gate}</Text>
-                                )}
-                            </View>
-                        </View>
-                    </View>
-                )}
+                {/* Disclaimer */}
+                <View style={styles.disclaimerBanner}>
+                    <Text style={styles.disclaimerIcon}>ℹ️</Text>
+                    <Text style={styles.disclaimerText}>
+                        Amenities shown are typical for this aircraft and cabin class. Actual configurations may vary by specific aircraft, route, or recent upgrades.
+                    </Text>
+                </View>
 
-                {/* Aircraft Info Card */}
-                {amenities && (
+                {/* Aircraft Info */}
+                {aircraft && (
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>🛩️ Aircraft</Text>
-                        <View style={styles.aircraftInfo}>
-                            <View style={styles.aircraftMain}>
-                                <Text style={styles.aircraftModel}>{amenities.model}</Text>
-                                <Text style={styles.aircraftManufacturer}>{amenities.manufacturer}</Text>
-                                {flightData?.aircraft?.registration && (
-                                    <Text style={styles.aircraftReg}>Reg: {flightData.aircraft.registration}</Text>
-                                )}
-                            </View>
-                            <View style={styles.aircraftStats}>
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statValue}>{amenities.seatConfiguration}</Text>
-                                    <Text style={styles.statLabel}>Config</Text>
-                                </View>
-                                {amenities.totalSeats && (
-                                    <View style={styles.statItem}>
-                                        <Text style={styles.statValue}>{amenities.totalSeats}</Text>
-                                        <Text style={styles.statLabel}>Seats</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
+                        <Text style={styles.aircraftModel}>{aircraft.manufacturer} {aircraft.model}</Text>
+                        <Text style={styles.aircraftVariant}>{aircraft.variant}</Text>
                     </View>
                 )}
 
-                {/* Amenities Cards */}
-                {amenities && (
+                {/* Seating */}
+                {renderSeatDetails(amenities)}
+
+                {/* Features */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>✨ Seat Features</Text>
+                    {renderFeatureList('Features', '🪑', amenities.features)}
+                </View>
+
+                {/* Entertainment */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>🎬 Entertainment</Text>
+                    {renderFeatureList('Available', '📺', amenities.entertainment)}
+                </View>
+
+                {/* Power */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>🔌 Power & Connectivity</Text>
+                    {renderFeatureList('Power Options', '⚡', amenities.power)}
+                </View>
+
+                {/* Food & Beverage */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>🍽️ Food & Beverage</Text>
+                    {renderFeatureList('Food', '🍴', amenities.food)}
+                    {renderFeatureList('Beverages', '🥤', amenities.beverages)}
+                </View>
+
+                {/* Extras */}
+                {amenities.extras && amenities.extras.length > 0 && (
                     <View style={styles.card}>
-                        <Text style={styles.cardTitle}>🎬 Amenities</Text>
-
-                        {renderAmenityCard(
-                            '📺',
-                            'Entertainment',
-                            amenities.entertainment.type,
-                            amenities.entertainment.description,
-                            amenities.entertainment.available
-                        )}
-
-                        {renderAmenityCard(
-                            '🍽️',
-                            'Food & Beverage',
-                            amenities.food.type,
-                            amenities.food.description,
-                            amenities.food.available
-                        )}
-
-                        {renderAmenityCard(
-                            '🔌',
-                            'Power',
-                            amenities.power.type,
-                            undefined,
-                            amenities.power.available
-                        )}
-
-                        {renderAmenityCard(
-                            '📶',
-                            'WiFi',
-                            amenities.wifi.type,
-                            undefined,
-                            amenities.wifi.available
-                        )}
-                    </View>
-                )}
-
-                {/* Seat Features Card */}
-                {amenities && (
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>💺 Seat Features</Text>
-                        <View style={styles.seatGrid}>
-                            <View style={styles.seatItem}>
-                                <Text style={styles.seatIcon}>📏</Text>
-                                <Text style={styles.seatLabel}>Legroom</Text>
-                                <Text style={styles.seatValue}>{amenities.seatFeatures.legroom}</Text>
-                            </View>
-                            <View style={styles.seatItem}>
-                                <Text style={styles.seatIcon}>↕️</Text>
-                                <Text style={styles.seatLabel}>Recline</Text>
-                                <Text style={styles.seatValue}>{amenities.seatFeatures.recline ? 'Yes' : 'No'}</Text>
-                            </View>
-                            <View style={styles.seatItem}>
-                                <Text style={styles.seatIcon}>↔️</Text>
-                                <Text style={styles.seatLabel}>Width</Text>
-                                <Text style={styles.seatValue}>{amenities.seatFeatures.width}</Text>
-                            </View>
-                        </View>
+                        <Text style={styles.cardTitle}>🎁 Additional Benefits</Text>
+                        {renderFeatureList('Perks', '⭐', amenities.extras)}
                     </View>
                 )}
 
@@ -237,7 +175,7 @@ export default function FlightAmenitiesScreen({ route }: any) {
                     <View style={styles.imagesPlaceholder}>
                         <Text style={styles.placeholderIcon}>🖼️</Text>
                         <Text style={styles.placeholderText}>Aircraft images coming soon</Text>
-                        <Text style={styles.placeholderSubtext}>Add photos manually in assets/aircraft/</Text>
+                        <Text style={styles.placeholderSubtext}>You can add photos manually to assets/aircraft/</Text>
                     </View>
                 </View>
 
@@ -253,68 +191,94 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f5f7fa',
     },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#f5f7fa',
-    },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 16,
-        color: '#666',
-    },
     header: {
         paddingTop: Platform.OS === 'ios' ? 60 : 40,
         paddingBottom: 24,
         paddingHorizontal: 20,
     },
-    headerContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flexWrap: 'wrap',
+    backButton: {
+        marginBottom: 12,
     },
-    headerFlightNumber: {
-        fontSize: 28,
-        fontWeight: 'bold',
+    backText: {
         color: '#fff',
-        marginRight: 12,
-    },
-    headerAirline: {
-        fontSize: 18,
-        color: 'rgba(255,255,255,0.9)',
-        flex: 1,
-    },
-    statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-    },
-    statusText: {
-        color: '#fff',
-        fontSize: 13,
+        fontSize: 16,
         fontWeight: '600',
+    },
+    headerContent: {
+        marginTop: 8,
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#fff',
+        marginBottom: 6,
+    },
+    headerSubtitle: {
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.9)',
     },
     content: {
         flex: 1,
         padding: 16,
     },
-    errorBanner: {
+    classBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF3E0',
-        padding: 12,
-        borderRadius: 12,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 20,
         marginBottom: 16,
+        borderWidth: 2,
+        borderColor: '#3B82F6',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#3B82F6',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 6,
+            },
+        }),
     },
-    errorIcon: {
-        fontSize: 20,
-        marginRight: 8,
+    classBannerIcon: {
+        fontSize: 48,
+        marginRight: 16,
     },
-    errorText: {
+    classBannerText: {
         flex: 1,
+    },
+    classBannerTitle: {
         fontSize: 14,
-        color: '#E65100',
+        color: '#666',
+        marginBottom: 4,
+    },
+    classBannerClass: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#3B82F6',
+    },
+    disclaimerBanner: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#FFF9E6',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: '#F59E0B',
+    },
+    disclaimerIcon: {
+        fontSize: 18,
+        marginRight: 10,
+        marginTop: 1,
+    },
+    disclaimerText: {
+        flex: 1,
+        fontSize: 13,
+        lineHeight: 18,
+        color: '#92400E',
     },
     card: {
         backgroundColor: '#fff',
@@ -324,9 +288,9 @@ const styles = StyleSheet.create({
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.1,
                 shadowRadius: 8,
+                shadowOffset: { width: 0, height: 2 },
             },
             android: {
                 elevation: 4,
@@ -339,146 +303,65 @@ const styles = StyleSheet.create({
         color: '#1e3c72',
         marginBottom: 16,
     },
-    routeContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    routePoint: {
-        flex: 1,
-    },
-    routeCode: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    routeAirport: {
-        fontSize: 13,
-        color: '#666',
-        marginTop: 4,
-    },
-    routeTerminal: {
-        fontSize: 12,
-        color: '#1e3c72',
-        marginTop: 4,
-        fontWeight: '500',
-    },
-    routeGate: {
-        fontSize: 12,
-        color: '#4CAF50',
-        fontWeight: '600',
-    },
-    routeArrow: {
-        paddingHorizontal: 16,
-    },
-    routeArrowIcon: {
-        fontSize: 24,
-        color: '#1e3c72',
-    },
-    aircraftInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    aircraftMain: {
-        flex: 1,
-    },
     aircraftModel: {
-        fontSize: 22,
-        fontWeight: 'bold',
+        fontSize: 20,
+        fontWeight: '700',
         color: '#333',
+        marginBottom: 4,
     },
-    aircraftManufacturer: {
+    aircraftVariant: {
         fontSize: 14,
         color: '#666',
-        marginTop: 4,
     },
-    aircraftReg: {
-        fontSize: 13,
-        color: '#999',
-        marginTop: 8,
-        fontStyle: 'italic',
-    },
-    aircraftStats: {
+    seatGrid: {
         flexDirection: 'row',
-        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 12,
     },
-    statItem: {
-        alignItems: 'center',
-        marginLeft: 24,
-    },
-    statValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#1e3c72',
-    },
-    statLabel: {
-        fontSize: 11,
-        color: '#999',
-        marginTop: 2,
-    },
-    amenityCard: {
+    seatStat: {
         backgroundColor: '#f8f9fb',
         borderRadius: 12,
         padding: 16,
-        marginBottom: 12,
+        width: '48%',
     },
-    amenityHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
+    seatStatLabel: {
+        fontSize: 12,
+        color: '#999',
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
-    amenityIcon: {
-        fontSize: 24,
-        marginRight: 12,
-    },
-    amenityTitleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    amenityTitle: {
+    seatStatValue: {
         fontSize: 16,
         fontWeight: '600',
         color: '#333',
     },
-    availabilityDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginLeft: 8,
+    featureSection: {
+        marginBottom: 16,
     },
-    amenityValue: {
+    featureSectionTitle: {
         fontSize: 15,
-        fontWeight: '500',
-        color: '#1e3c72',
-        marginLeft: 36,
-    },
-    amenityDescription: {
-        fontSize: 13,
-        color: '#666',
-        marginTop: 6,
-        marginLeft: 36,
-    },
-    seatGrid: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-    },
-    seatItem: {
-        alignItems: 'center',
-        padding: 12,
-    },
-    seatIcon: {
-        fontSize: 28,
-        marginBottom: 8,
-    },
-    seatLabel: {
-        fontSize: 12,
-        color: '#999',
-    },
-    seatValue: {
-        fontSize: 14,
         fontWeight: '600',
-        color: '#333',
-        marginTop: 4,
-        textAlign: 'center',
+        color: '#1e3c72',
+        marginBottom: 10,
+    },
+    featureItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+        paddingLeft: 8,
+    },
+    featureBullet: {
+        fontSize: 16,
+        color: '#3B82F6',
+        marginRight: 8,
+        marginTop: 1,
+    },
+    featureText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#666',
+        lineHeight: 20,
     },
     imagesPlaceholder: {
         alignItems: 'center',
@@ -501,5 +384,20 @@ const styles = StyleSheet.create({
     placeholderSubtext: {
         fontSize: 12,
         color: '#999',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 40,
+    },
+    errorIcon: {
+        fontSize: 64,
+        marginBottom: 16,
+    },
+    errorText: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
     },
 });

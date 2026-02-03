@@ -7,6 +7,9 @@ import AddFlightTripScreen from '../screens/AddFlightTripScreen';
 import AddBusTripScreen from '../screens/AddBusTripScreen';
 import TripDetailScreen from '../screens/TripDetailScreen';
 import FlightAmenitiesScreen from '../screens/FlightAmenitiesScreen';
+import TravelStatsScreen from '../screens/TravelStatsScreen';
+import ARLuggageScreen from '../screens/ARLuggageScreen';
+import PhotoJournalScreen from '../screens/PhotoJournalScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -38,6 +41,18 @@ export default function RootNavigator() {
                 <Stack.Screen
                     name="FlightAmenities"
                     component={FlightAmenitiesScreen}
+                />
+                <Stack.Screen
+                    name="TravelStats"
+                    component={TravelStatsScreen}
+                />
+                <Stack.Screen
+                    name="ARLuggage"
+                    component={ARLuggageScreen}
+                />
+                <Stack.Screen
+                    name="PhotoJournal"
+                    component={PhotoJournalScreen}
                 />
             </Stack.Navigator>
         </NavigationContainer>

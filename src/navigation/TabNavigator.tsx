@@ -5,6 +5,7 @@ import { colors } from '../theme';
 import HomeScreen from '../screens/HomeScreen';
 import TicketsScreen from '../screens/TicketsScreen';
 import TripsScreen from '../screens/TripsScreen';
+import CompanionScreen from '../screens/CompanionScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -53,6 +54,14 @@ export default function TabNavigator() {
                 options={{
                     tabBarLabel: 'Trips',
                     tabBarIcon: ({ color }) => <TabIcon icon="📅" color={color} />,
+                }}
+            />
+            <Tab.Screen
+                name="Companion"
+                component={CompanionScreen}
+                options={{
+                    tabBarLabel: 'Companion',
+                    tabBarIcon: ({ color }) => <TabIcon icon="🎒" color={color} />,
                 }}
             />
             <Tab.Screen

@@ -1,3 +1,5 @@
+export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
+
 export interface Trip {
     id: string;
     userId: string;
@@ -9,6 +11,8 @@ export interface Trip {
     // Flight-specific fields
     airline?: string;
     flightNumber?: string;
+    cabinClass?: CabinClass;
+    aircraftModel?: string; // e.g., 'A320', '737-800'
 
     // Bus-specific fields
     busCompany?: string;
@@ -35,6 +39,8 @@ export interface CreateTripInput {
     destination: string;
     airline?: string;
     flightNumber?: string;
+    cabinClass?: CabinClass;
+    aircraftModel?: string;
     busCompany?: string;
     busNumber?: string;
     departureStation?: string;

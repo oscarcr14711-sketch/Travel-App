@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform, Modal, TextInput, KeyboardAvoidingView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing } from '../theme';
 import { Trip } from '../types/trip.types';
 import { getWeatherForDestination, WeatherData, getWeatherEmoji } from '../services/weather.service';
 import { generateChecklistForTrip, toggleChecklistItem, addCustomChecklistItem, ChecklistItem } from '../services/checklist.service';
+import { getBudgetForTrip, addExpense, deleteExpense, setTotalBudget, getTotalSpent } from '../services/budget.service';
+import { BudgetData, Expense, EXPENSE_CATEGORIES } from '../types/budget.types';
 
-type TabType = 'overview' | 'checklist' | 'timeline';
+type TabType = 'overview' | 'checklist' | 'timeline' | 'budget';
 
 export default function TripDetailScreen({ route, navigation }: any) {
     const trip: Trip = route.params?.trip;
@@ -17,6 +19,13 @@ export default function TripDetailScreen({ route, navigation }: any) {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showAddModal, setShowAddModal] = useState(false);
     const [newItemText, setNewItemText] = useState('');
+    const [budgetData, setBudgetData] = useState<BudgetData | null>(null);
+    const [showBudgetModal, setShowBudgetModal] = useState(false);
+    const [showExpenseModal, setShowExpenseModal] = useState(false);
+    const [newBudgetAmount, setNewBudgetAmount] = useState('');
+    const [newExpenseAmount, setNewExpenseAmount] = useState('');
+    const [newExpenseDesc, setNewExpenseDesc] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('food');
 
     // Update current time every second for real-time countdown
     useEffect(() => {
@@ -28,6 +37,7 @@ export default function TripDetailScreen({ route, navigation }: any) {
 
     useEffect(() => {
         loadTripData();
+        loadBudgetData();
     }, []);
 
     const loadTripData = async () => {
@@ -45,6 +55,16 @@ export default function TripDetailScreen({ route, navigation }: any) {
             console.error('Error loading trip data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadBudgetData = async () => {
+        if (!trip) return;
+        try {
+            const budget = await getBudgetForTrip(trip.id);
+            setBudgetData(budget);
+        } catch (error) {
+            console.error('Error loading budget:', error);
         }
     };
 
@@ -608,6 +628,290 @@ export default function TripDetailScreen({ route, navigation }: any) {
         );
     };
 
+    const renderBudgetTab = () => {
+        if (!budgetData) return null;
+
+        const totalSpent = getTotalSpent(budgetData.expenses);
+        const remaining = budgetData.totalBudget - totalSpent;
+        const percentSpent = budgetData.totalBudget > 0 ? (totalSpent / budgetData.totalBudget) * 100 : 0;
+
+        const handleSetBudget = async () => {
+            const amount = parseFloat(newBudgetAmount);
+            if (isNaN(amount) || amount <= 0) {
+                Alert.alert('Invalid Amount', 'Please enter a valid budget amount');
+                return;
+            }
+            await setTotalBudget(trip.id, amount);
+            await loadBudgetData();
+            setShowBudgetModal(false);
+            setNewBudgetAmount('');
+        };
+
+        const handleAddExpense = async () => {
+            const amount = parseFloat(newExpenseAmount);
+            if (isNaN(amount) || amount <= 0) {
+                Alert.alert('Invalid Amount', 'Please enter a valid expense amount');
+                return;
+            }
+            if (!newExpenseDesc.trim()) {
+                Alert.alert('Missing Description', 'Please enter an expense description');
+                return;
+            }
+            await addExpense(trip.id, {
+                category: selectedCategory as any,
+                amount,
+                description: newExpenseDesc,
+                date: new Date().toISOString(),
+            });
+            await loadBudgetData();
+            setShowExpenseModal(false);
+            setNewExpenseAmount('');
+            setNewExpenseDesc('');
+            setSelectedCategory('food');
+        };
+
+        const handleDeleteExpense = async (expenseId: string) => {
+            Alert.alert(
+                'Delete Expense',
+                'Are you sure you want to delete this expense?',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await deleteExpense(trip.id, expenseId);
+                            await loadBudgetData();
+                        },
+                    },
+                ]
+            );
+        };
+
+        return (
+            <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+                {/* Budget Summary Card */}
+                <View style={styles.budgetSummaryCard}>
+                    <View style={styles.budgetHeader}>
+                        <Text style={styles.budgetTitle}>💰 Trip Budget</Text>
+                        <TouchableOpacity
+                            style={styles.setBudgetButton}
+                            onPress={() => setShowBudgetModal(true)}
+                        >
+                            <Text style={styles.setBudgetButtonText}>
+                                {budgetData.totalBudget > 0 ? 'Edit' : 'Set Budget'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {budgetData.totalBudget > 0 && (
+                        <>
+                            <View style={styles.budgetAmounts}>
+                                <View style={styles.budgetAmountRow}>
+                                    <Text style={styles.budgetLabel}>Total Budget:</Text>
+                                    <Text style={styles.budgetAmount}>${budgetData.totalBudget.toFixed(2)}</Text>
+                                </View>
+                                <View style={styles.budgetAmountRow}>
+                                    <Text style={styles.budgetLabel}>Spent:</Text>
+                                    <Text style={[styles.budgetAmount, styles.spentAmount]}>
+                                        ${totalSpent.toFixed(2)}
+                                    </Text>
+                                </View>
+                                <View style={[styles.budgetAmountRow, styles.remainingRow]}>
+                                    <Text style={styles.budgetLabelBold}>Remaining:</Text>
+                                    <Text style={[
+                                        styles.budgetAmountBold,
+                                        remaining < 0 ? styles.overBudget : styles.underBudget
+                                    ]}>
+                                        ${remaining.toFixed(2)}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {/* Progress Bar */}
+                            <View style={styles.budgetProgressContainer}>
+                                <View style={styles.budgetProgressBar}>
+                                    <View style={[
+                                        styles.budgetProgressFill,
+                                        { width: `${Math.min(percentSpent, 100)}%` },
+                                        percentSpent > 100 && styles.budgetProgressOver
+                                    ]} />
+                                </View>
+                                <Text style={styles.budgetProgressText}>
+                                    {percentSpent.toFixed(0)}% used
+                                </Text>
+                            </View>
+                        </>
+                    )}
+                </View>
+
+                {/* Expenses List */}
+                <View style={styles.expensesSection}>
+                    <View style={styles.expensesHeader}>
+                        <Text style={styles.expensesTitle}>📊 Expenses</Text>
+                        <TouchableOpacity
+                            style={styles.addExpenseButton}
+                            onPress={() => setShowExpenseModal(true)}
+                        >
+                            <Text style={styles.addExpenseButtonText}>+ Add Expense</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {budgetData.expenses.length === 0 ? (
+                        <View style={styles.emptyExpenses}>
+                            <Text style={styles.emptyExpensesText}>No expenses yet</Text>
+                            <Text style={styles.emptyExpensesSubtext}>Tap "+ Add Expense" to start tracking</Text>
+                        </View>
+                    ) : (
+                        budgetData.expenses.map((expense) => {
+                            const category = EXPENSE_CATEGORIES.find(c => c.id === expense.category);
+                            return (
+                                <View key={expense.id} style={styles.expenseCard}>
+                                    <View style={styles.expenseLeft}>
+                                        <View style={[styles.expenseIconContainer, { backgroundColor: category?.color + '20' }]}>
+                                            <Text style={styles.expenseIcon}>{category?.icon}</Text>
+                                        </View>
+                                        <View style={styles.expenseDetails}>
+                                            <Text style={styles.expenseDescription}>{expense.description}</Text>
+                                            <Text style={styles.expenseCategory}>{category?.label}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.expenseRight}>
+                                        <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
+                                        <TouchableOpacity
+                                            onPress={() => handleDeleteExpense(expense.id)}
+                                            style={styles.deleteExpenseButton}
+                                        >
+                                            <Text style={styles.deleteExpenseText}>🗑️</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            );
+                        })
+                    )}
+                </View>
+
+                {/* Set Budget Modal */}
+                <Modal
+                    visible={showBudgetModal}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setShowBudgetModal(false)}
+                >
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.modalOverlay}
+                    >
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Set Trip Budget</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Enter amount (e.g., 1000)"
+                                keyboardType="decimal-pad"
+                                value={newBudgetAmount}
+                                onChangeText={setNewBudgetAmount}
+                            />
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.modalButtonCancel]}
+                                    onPress={() => {
+                                        setShowBudgetModal(false);
+                                        setNewBudgetAmount('');
+                                    }}
+                                >
+                                    <Text style={styles.modalButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.modalButtonConfirm]}
+                                    onPress={handleSetBudget}
+                                >
+                                    <Text style={[styles.modalButtonText, styles.modalButtonTextConfirm]}>
+                                        Set Budget
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </Modal>
+
+                {/* Add Expense Modal */}
+                <Modal
+                    visible={showExpenseModal}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setShowExpenseModal(false)}
+                >
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.modalOverlay}
+                    >
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Add Expense</Text>
+
+                            {/* Category Selection */}
+                            <Text style={styles.modalLabel}>Category</Text>
+                            <View style={styles.categoryGrid}>
+                                {EXPENSE_CATEGORIES.map((cat) => (
+                                    <TouchableOpacity
+                                        key={cat.id}
+                                        style={[
+                                            styles.categoryButton,
+                                            selectedCategory === cat.id && styles.categoryButtonActive,
+                                            { borderColor: cat.color }
+                                        ]}
+                                        onPress={() => setSelectedCategory(cat.id)}
+                                    >
+                                        <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                                        <Text style={styles.categoryLabel}>{cat.label.split(' &')[0]}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <Text style={styles.modalLabel}>Amount</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="0.00"
+                                keyboardType="decimal-pad"
+                                value={newExpenseAmount}
+                                onChangeText={setNewExpenseAmount}
+                            />
+
+                            <Text style={styles.modalLabel}>Description</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="What did you buy?"
+                                value={newExpenseDesc}
+                                onChangeText={setNewExpenseDesc}
+                            />
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.modalButtonCancel]}
+                                    onPress={() => {
+                                        setShowExpenseModal(false);
+                                        setNewExpenseAmount('');
+                                        setNewExpenseDesc('');
+                                        setSelectedCategory('food');
+                                    }}
+                                >
+                                    <Text style={styles.modalButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.modalButtonConfirm]}
+                                    onPress={handleAddExpense}
+                                >
+                                    <Text style={[styles.modalButtonText, styles.modalButtonTextConfirm]}>
+                                        Add Expense
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </Modal>
+            </ScrollView>
+        );
+    };
+
     if (!trip) {
         return (
             <View style={styles.container}>
@@ -629,14 +933,14 @@ export default function TripDetailScreen({ route, navigation }: any) {
 
             {/* Tab Bar */}
             <View style={styles.tabBar}>
-                {(['overview', 'checklist', 'timeline'] as TabType[]).map((tab) => (
+                {(['overview', 'checklist', 'timeline', 'budget'] as TabType[]).map((tab) => (
                     <TouchableOpacity
                         key={tab}
                         style={[styles.tab, activeTab === tab && styles.tabActive]}
                         onPress={() => setActiveTab(tab)}
                     >
                         <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                            {tab === 'overview' ? '📋 Overview' : tab === 'checklist' ? '✅ Checklist' : '🕐 Timeline'}
+                            {tab === 'overview' ? '📋 Overview' : tab === 'checklist' ? '✅ Checklist' : tab === 'timeline' ? '🕐 Timeline' : '💰 Budget'}
                         </Text>
                     </TouchableOpacity>
                 ))}
@@ -653,6 +957,7 @@ export default function TripDetailScreen({ route, navigation }: any) {
                     {activeTab === 'overview' && renderOverviewTab()}
                     {activeTab === 'checklist' && renderChecklistTab()}
                     {activeTab === 'timeline' && renderTimelineTab()}
+                    {activeTab === 'budget' && renderBudgetTab()}
                 </>
             )}
         </View>
@@ -1350,6 +1655,275 @@ const styles = StyleSheet.create({
     modalAddText: {
         fontSize: 16,
         fontWeight: '600',
+        color: '#fff',
+    },
+    // Budget Tab Styles
+    budgetSummaryCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 20,
+        margin: 16,
+        marginTop: 20,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
+    budgetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    budgetTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1a1a1a',
+    },
+    setBudgetButton: {
+        backgroundColor: '#1e3c72',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    setBudgetButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    budgetAmounts: {
+        marginTop: 8,
+    },
+    budgetAmountRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    remainingRow: {
+        borderTopWidth: 1,
+        borderTopColor: '#e5e5e5',
+        paddingTop: 12,
+        marginTop: 4,
+    },
+    budgetLabel: {
+        fontSize: 16,
+        color: '#666',
+    },
+    budgetLabelBold: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1a1a1a',
+    },
+    budgetAmount: {
+        fontSize: 16,
+        color: '#1a1a1a',
+    },
+    spentAmount: {
+        color: '#ff6b6b',
+    },
+    budgetAmountBold: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    underBudget: {
+        color: '#51cf66',
+    },
+    overBudget: {
+        color: '#ff4444',
+    },
+    budgetProgressContainer: {
+        marginTop: 16,
+    },
+    budgetProgressBar: {
+        height: 12,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 6,
+        overflow: 'hidden',
+    },
+    budgetProgressFill: {
+        height: '100%',
+        backgroundColor: '#1e3c72',
+        borderRadius: 6,
+    },
+    budgetProgressOver: {
+        backgroundColor: '#ff4444',
+    },
+    budgetProgressText: {
+        textAlign: 'center',
+        marginTop: 8,
+        fontSize: 14,
+        color: '#666',
+    },
+    expensesSection: {
+        paddingHorizontal: 16,
+        paddingBottom: 80,
+    },
+    expensesHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    expensesTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1a1a1a',
+    },
+    addExpenseButton: {
+        backgroundColor: '#51cf66',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    addExpenseButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    emptyExpenses: {
+        backgroundColor: '#f8f9fa',
+        padding: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+    },
+    emptyExpensesText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 4,
+    },
+    emptyExpensesSubtext: {
+        fontSize: 14,
+        color: '#999',
+    },
+    expenseCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
+    },
+    expenseLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    expenseIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    expenseIcon: {
+        fontSize: 24,
+    },
+    expenseDetails: {
+        flex: 1,
+    },
+    expenseDescription: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1a1a1a',
+        marginBottom: 4,
+    },
+    expenseCategory: {
+        fontSize: 14,
+        color: '#999',
+    },
+    expenseRight: {
+        alignItems: 'flex-end',
+    },
+    expenseAmount: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1e3c72',
+        marginBottom: 4,
+    },
+    deleteExpenseButton: {
+        padding: 4,
+    },
+    deleteExpenseText: {
+        fontSize: 18,
+    },
+    modalLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 8,
+        marginTop: 16,
+    },
+    categoryGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 8,
+    },
+    categoryButton: {
+        width: '30%',
+        aspectRatio: 1,
+        borderRadius: 12,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f8f9fa',
+    },
+    categoryButtonActive: {
+        backgroundColor: '#fff',
+        borderWidth: 3,
+    },
+    categoryIcon: {
+        fontSize: 28,
+        marginBottom: 4,
+    },
+    categoryLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#666',
+        textAlign: 'center',
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalButtonCancel: {
+        backgroundColor: '#f0f0f0',
+        marginRight: 8,
+    },
+    modalButtonConfirm: {
+        backgroundColor: '#1e3c72',
+        marginLeft: 8,
+    },
+    modalButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#666',
+    },
+    modalButtonTextConfirm: {
         color: '#fff',
     },
 });
