@@ -1,18 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import StarryBackground from '../components/StarryBackground';
 import { colors, typography, spacing } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 export default function HomeScreen({ navigation }: any) {
+    const { theme } = useTheme();
+
     const handleCountrySelect = (country: 'USA' | 'Mexico') => {
         console.log(`Selected country: ${country}`);
         navigation.navigate('TransportationSelection', { country });
     };
 
     return (
-        <View style={styles.container}>
-            {/* Royal Blue Gradient Background */}
-            <View style={styles.gradient} />
-
+        <StarryBackground>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -36,7 +38,7 @@ export default function HomeScreen({ navigation }: any) {
 
                 {/* Country Selection Section */}
                 <View style={styles.selectionContainer}>
-                    <Text style={styles.instructionText}>Select Your Travel Country</Text>
+                    <Text style={[styles.instructionText, { color: theme.headerText }]}>Select Your Travel Country</Text>
 
                     <View style={styles.buttonContainer}>
                         {/* Mexico Button */}
@@ -45,11 +47,24 @@ export default function HomeScreen({ navigation }: any) {
                             onPress={() => handleCountrySelect('Mexico')}
                             activeOpacity={0.8}
                         >
-                            <View style={styles.buttonContent}>
-                                <Text style={styles.countryFlag}>🇲🇽</Text>
-                                <Text style={styles.countryText}>Mexico</Text>
-                            </View>
-                            <View style={styles.buttonShadow} />
+                            <LinearGradient
+                                colors={['#5dc7bf', '#4db8b0', '#3da39c']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 0, y: 1 }}
+                                style={styles.buttonGradient}
+                            >
+                                {/* Glossy highlight overlay */}
+                                <LinearGradient
+                                    colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.1)', 'transparent']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 0, y: 0.5 }}
+                                    style={styles.glossOverlay}
+                                />
+                                <View style={styles.buttonContent}>
+                                    <Text style={styles.countryFlag}>🇲🇽</Text>
+                                    <Text style={styles.countryText}>Mexico</Text>
+                                </View>
+                            </LinearGradient>
                         </TouchableOpacity>
 
                         {/* USA Button */}
@@ -58,16 +73,29 @@ export default function HomeScreen({ navigation }: any) {
                             onPress={() => handleCountrySelect('USA')}
                             activeOpacity={0.8}
                         >
-                            <View style={styles.buttonContent}>
-                                <Text style={styles.countryFlag}>🇺🇸</Text>
-                                <Text style={styles.countryText}>USA</Text>
-                            </View>
-                            <View style={styles.buttonShadow} />
+                            <LinearGradient
+                                colors={['#7c6fdd', '#6b5fcc', '#5a4ebb']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 0, y: 1 }}
+                                style={styles.buttonGradient}
+                            >
+                                {/* Glossy highlight overlay */}
+                                <LinearGradient
+                                    colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.1)', 'transparent']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 0, y: 0.5 }}
+                                    style={styles.glossOverlay}
+                                />
+                                <View style={styles.buttonContent}>
+                                    <Text style={styles.countryFlag}>🇺🇸</Text>
+                                    <Text style={styles.countryText}>USA</Text>
+                                </View>
+                            </LinearGradient>
                         </TouchableOpacity>
                     </View>
                 </View>
             </ScrollView>
-        </View>
+        </StarryBackground>
     );
 }
 
@@ -98,12 +126,12 @@ const styles = StyleSheet.create({
         gap: spacing.lg,
     },
     logo: {
-        width: 240,
-        height: 240,
+        width: 280,
+        height: 280,
     },
     title: {
-        width: 650,
-        height: 160,
+        width: 700,
+        height: 210,
     },
     selectionContainer: {
         width: '100%',
@@ -112,14 +140,11 @@ const styles = StyleSheet.create({
         marginBottom: spacing.xl,
     },
     instructionText: {
-        ...typography.styles.h4,
-        color: colors.neutral.white,
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#ffffff',
         marginBottom: spacing.xl,
         textAlign: 'center',
-        fontWeight: '600',
-        textShadowColor: 'rgba(0, 0, 0, 0.2)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 4,
     },
     buttonContainer: {
         flexDirection: 'row',
@@ -129,51 +154,45 @@ const styles = StyleSheet.create({
     },
     countryButton: {
         flex: 1,
-        maxWidth: 110,
-        height: 50,
+        maxWidth: 165,
+        height: 56,
+        borderRadius: 28,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 10,
+    },
+    buttonGradient: {
+        flex: 1,
+        borderRadius: 28,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
+    },
+    glossOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '50%',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
     },
     buttonContent: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#9CA3AF', // Grayish base
-        borderRadius: 16,
         paddingHorizontal: spacing.md,
         gap: spacing.sm,
-        // 3D effect - top layer
-        shadowColor: '#FFFFFF',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        elevation: 8,
-        // Border for 3D depth
-        borderTopWidth: 2,
-        borderTopColor: 'rgba(255, 255, 255, 0.4)',
-        borderBottomWidth: 3,
-        borderBottomColor: 'rgba(0, 0, 0, 0.3)',
-    },
-    buttonShadow: {
-        position: 'absolute',
-        bottom: -4,
-        left: 4,
-        right: 4,
-        height: 50,
-        backgroundColor: '#6B7280',
-        borderRadius: 16,
-        zIndex: -1,
-        opacity: 0.6,
     },
     countryFlag: {
         fontSize: 24,
     },
     countryText: {
-        ...typography.styles.h5,
         fontSize: 18,
         fontWeight: '700',
-        color: colors.neutral.white,
-        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
+        color: '#ffffff',
     },
 });

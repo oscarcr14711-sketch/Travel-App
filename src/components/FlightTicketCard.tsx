@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Trip } from '../types/trip.types';
-import { getAirlineColors } from '../utils/logoMapper';
+import { useTheme } from '../context/ThemeContext';
+import { calculateDurationDays, getCityTimeZone, getTimeDifference, formatTimeDifference } from '../utils/timezones';
 
 interface FlightTicketCardProps {
     trip: Trip;
@@ -12,161 +13,123 @@ interface FlightTicketCardProps {
 }
 
 export default function FlightTicketCard({ trip, onDelete, onViewDetails, onViewAmenities }: FlightTicketCardProps) {
-    const [timeRemaining, setTimeRemaining] = useState('');
-    const [duration, setDuration] = useState('');
+    const { theme } = useTheme();
 
-    useEffect(() => {
-        const calculateTimeRemaining = () => {
-            try {
-                const departureDateTime = new Date(`${trip.departureDate} ${trip.departureTime}`);
-                const now = new Date();
-                const diff = departureDateTime.getTime() - now.getTime();
+    // Calculate multi-day indicator
+    const durationDays = trip.durationDays || calculateDurationDays(trip.departureDate, trip.arrivalDate);
+    const isMultiDay = durationDays > 1;
 
-                if (isNaN(diff) || diff < 0) {
-                    setTimeRemaining('Departed');
-                    return;
-                }
-
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-                if (days > 0) {
-                    setTimeRemaining(`${days}d ${hours}h`);
-                } else if (hours > 0) {
-                    setTimeRemaining(`${hours}h ${minutes}m`);
-                } else if (minutes > 0) {
-                    setTimeRemaining(`${minutes}m`);
-                } else {
-                    setTimeRemaining('Soon');
-                }
-            } catch {
-                setTimeRemaining('--');
-            }
-        };
-
-        const calculateDuration = () => {
-            try {
-                const departureDateTime = new Date(`${trip.departureDate} ${trip.departureTime}`);
-                const arrivalDateTime = new Date(`${trip.arrivalDate} ${trip.arrivalTime}`);
-                const diff = arrivalDateTime.getTime() - departureDateTime.getTime();
-
-                if (isNaN(diff) || diff <= 0) {
-                    setDuration('Direct');
-                    return;
-                }
-
-                const hours = Math.floor(diff / (1000 * 60 * 60));
-                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-                if (hours > 0) {
-                    setDuration(`${hours}h ${minutes}m`);
-                } else {
-                    setDuration(`${minutes}m`);
-                }
-            } catch {
-                setDuration('--');
-            }
-        };
-
-        calculateTimeRemaining();
-        calculateDuration();
-        const interval = setInterval(calculateTimeRemaining, 60000);
-
-        return () => clearInterval(interval);
-    }, [trip]);
-
-    const gradientColors = getAirlineColors(trip.airline || '') as [string, string, ...string[]];
+    // Calculate connections
+    const hasConnections = trip.connections && trip.connections.length > 0;
+    const connectionCount = trip.connections?.length || 0;
 
     return (
-        <View style={styles.cardContainer}>
+        <View style={[styles.cardContainer, { shadowColor: theme.flightCardShadow }]}>
             <LinearGradient
-                colors={gradientColors}
+                colors={theme.flightCardColors}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.card}
             >
-                {/* Header Row */}
+                {/* Header */}
                 <View style={styles.header}>
-                    <View style={styles.airlineInfo}>
-                        <View style={styles.airlineTextContainer}>
-                            <Text style={styles.airlineName}>{trip.airline || 'Flight'}</Text>
-                            {trip.flightNumber && (
-                                <Text style={styles.flightNumber}>Flight {trip.flightNumber}</Text>
-                            )}
-                        </View>
+                    <View style={styles.headerLeft}>
+                        <Text style={[styles.airlineName, { color: theme.primaryText }]}>{trip.airline || 'Airline'}</Text>
+                        <Text style={[styles.flightNumber, { color: theme.secondaryText }]}>Flight {trip.flightNumber || 'N/A'}</Text>
                     </View>
-                    {timeRemaining !== 'Departed' && (
-                        <View style={styles.countdownBadge}>
-                            <Text style={styles.countdownLabel}>Departs in</Text>
-                            <Text style={styles.countdownValue}>{timeRemaining}</Text>
-                        </View>
-                    )}
+
+                    {/* Badges */}
+                    <View style={styles.badgeContainer}>
+                        {isMultiDay && (
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>🌙 {durationDays}d</Text>
+                            </View>
+                        )}
+                        {hasConnections && (
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>🔄 {connectionCount}</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
-                {/* Route Section */}
-                <View style={styles.routeSection}>
-                    <View style={styles.routeEndpoint}>
-                        <Text style={styles.cityCode}>{trip.origin?.slice(0, 3).toUpperCase() || 'DEP'}</Text>
-                        <Text style={styles.cityName} numberOfLines={1}>{trip.origin}</Text>
-                        <Text style={styles.timeText}>{trip.departureTime}</Text>
+                {/* Route Visualization */}
+                <View style={styles.routeContainer}>
+                    <View style={styles.airportContainer}>
+                        <Text style={styles.airportCode}>{trip.origin || 'XXX'}</Text>
+                        <Text style={styles.cityName} numberOfLines={1}>
+                            {trip.origin === 'AUS' ? 'Austin (AUS)' :
+                                trip.origin === 'FLL' ? 'Fort Lauder...' :
+                                    trip.origin === 'JFK' ? 'New York' :
+                                        trip.origin === 'LAX' ? 'Los Angeles' :
+                                            trip.origin}
+                        </Text>
+                        <Text style={styles.time}>{trip.departureTime || '--:--'}</Text>
                     </View>
 
-                    <View style={styles.routeMiddle}>
-                        <View style={styles.routeLine}>
-                            <View style={styles.routeDot} />
-                            <View style={styles.dottedLine} />
-                            <Text style={styles.planeIcon}>✈️</Text>
-                            <View style={styles.dottedLine} />
-                            <View style={styles.routeDot} />
-                        </View>
-                        <Text style={styles.durationText}>{duration}</Text>
+                    <View style={styles.routeLine}>
+                        <View style={styles.dashedLine} />
+                        <Text style={styles.planeIcon}>✈️</Text>
+                        <View style={styles.dashedLine} />
+                        <Text style={styles.directLabel}>Direct</Text>
                     </View>
 
-                    <View style={styles.routeEndpoint}>
-                        <Text style={styles.cityCode}>{trip.destination?.slice(0, 3).toUpperCase() || 'ARR'}</Text>
-                        <Text style={styles.cityName} numberOfLines={1}>{trip.destination}</Text>
-                        <Text style={styles.timeText}>{trip.arrivalTime}</Text>
+                    <View style={styles.airportContainer}>
+                        <Text style={styles.airportCode}>{trip.destination || 'XXX'}</Text>
+                        <Text style={styles.cityName} numberOfLines={1}>
+                            {trip.destination === 'AUS' ? 'Austin (AUS)' :
+                                trip.destination === 'FLL' ? 'Fort Lauder...' :
+                                    trip.destination === 'JFK' ? 'New York' :
+                                        trip.destination === 'LAX' ? 'Los Angeles' :
+                                            trip.destination}
+                        </Text>
+                        <Text style={styles.time}>{trip.arrivalTime || '--:--'}</Text>
                     </View>
                 </View>
 
                 {/* Date Row */}
                 <View style={styles.dateRow}>
                     <View style={styles.dateItem}>
-                        <Text style={styles.dateLabel}>📅 Departure</Text>
-                        <Text style={styles.dateValue}>{trip.departureDate}</Text>
-                    </View>
-                    {trip.arrivalDate && (
-                        <View style={styles.dateItem}>
-                            <Text style={styles.dateLabel}>📅 Arrival</Text>
-                            <Text style={styles.dateValue}>{trip.arrivalDate}</Text>
+                        <View style={styles.dateHeader}>
+                            <Text style={styles.dateIcon}>📅</Text>
+                            <Text style={styles.dateLabel}>Departure</Text>
                         </View>
-                    )}
-                </View>
-
-                {/* Ticket Tear Line */}
-                <View style={styles.tearLine}>
-                    {Array.from({ length: 20 }).map((_, i) => (
-                        <View key={i} style={styles.tearDot} />
-                    ))}
-                </View>
-
-                {/* Footer */}
-                <View style={styles.footer}>
-                    <View style={styles.footerButtons}>
-                        {onViewDetails && (
-                            <TouchableOpacity style={styles.viewDetailsBtn} onPress={onViewDetails}>
-                                <Text style={styles.viewDetailsBtnText}>View Details →</Text>
-                            </TouchableOpacity>
-                        )}
-                        {onViewAmenities && (
-                            <TouchableOpacity style={styles.amenitiesBtn} onPress={onViewAmenities}>
-                                <Text style={styles.amenitiesBtnText}>✈️ Amenities</Text>
-                            </TouchableOpacity>
-                        )}
+                        <Text style={styles.dateValue}>{trip.departureDate || 'N/A'}</Text>
                     </View>
-                    <TouchableOpacity style={styles.deleteBtn} onPress={() => onDelete(trip.id)}>
-                        <Text style={styles.deleteBtnText}>🗑️</Text>
+                    <View style={styles.dateItem}>
+                        <View style={styles.dateHeader}>
+                            <Text style={styles.dateIcon}>📅</Text>
+                            <Text style={styles.dateLabel}>Arrival</Text>
+                        </View>
+                        <Text style={styles.dateValue}>{trip.arrivalDate || trip.departureDate || 'N/A'}</Text>
+                    </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.actionRow}>
+                    <TouchableOpacity
+                        style={styles.detailsButton}
+                        onPress={onViewDetails}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.detailsButtonText}>View Details →</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.amenitiesButton}
+                        onPress={onViewAmenities}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.amenitiesIcon}>✈️</Text>
+                        <Text style={styles.amenitiesText}>Amenities</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => onDelete(trip.id)}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.deleteIcon}>🗑</Text>
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -179,197 +142,195 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginBottom: 16,
         borderRadius: 20,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.3,
-                shadowRadius: 16,
-            },
-            android: {
-                elevation: 12,
-            },
-        }),
+        overflow: 'hidden',
+        // Purple glow effect
+        shadowColor: '#5d4a92',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 8,
     },
     card: {
-        borderRadius: 20,
         padding: 20,
-        overflow: 'hidden',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(100, 140, 200, 0.3)',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 24,
+        marginBottom: 20,
     },
-    airlineInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    airlineTextContainer: {
+    headerLeft: {
         flex: 1,
     },
     airlineName: {
-        fontSize: 19,
+        fontSize: 18,
         fontWeight: '700',
-        color: '#fff',
+        color: '#ffffff',
+        marginBottom: 2,
     },
     flightNumber: {
         fontSize: 13,
-        color: 'rgba(255,255,255,0.85)',
-        marginTop: 3,
-        fontWeight: '500',
+        color: 'rgba(255, 255, 255, 0.6)',
     },
-    countdownBadge: {
-        backgroundColor: 'rgba(255,255,255,0.25)',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)',
-    },
-    countdownLabel: {
-        fontSize: 10,
-        color: 'rgba(255,255,255,0.9)',
-        marginBottom: 2,
-        fontWeight: '600',
-    },
-    countdownValue: {
-        fontSize: 17,
-        fontWeight: '800',
-        color: '#fff',
-    },
-    routeSection: {
+    badgeContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
+        gap: 6,
+    },
+    badge: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    badgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#ffffff',
+    },
+    routeContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
         marginBottom: 20,
     },
-    routeEndpoint: {
+    airportContainer: {
         flex: 1,
         alignItems: 'center',
     },
-    cityCode: {
-        fontSize: 30,
-        fontWeight: '900',
-        color: '#fff',
-        letterSpacing: 1,
+    airportCode: {
+        fontSize: 32,
+        fontWeight: '700',
+        color: '#ffffff',
+        marginBottom: 4,
     },
     cityName: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.85)',
-        marginTop: 4,
+        fontSize: 11,
+        color: 'rgba(255, 255, 255, 0.6)',
+        marginBottom: 4,
         textAlign: 'center',
     },
-    timeText: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#fff',
-        marginTop: 6,
-    },
-    routeMiddle: {
-        flex: 1.2,
-        alignItems: 'center',
+    time: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#ffffff',
     },
     routeLine: {
-        flexDirection: 'row',
+        flex: 1.2,
         alignItems: 'center',
-        width: '100%',
+        justifyContent: 'center',
+        paddingTop: 8,
     },
-    routeDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: 'rgba(255,255,255,0.7)',
-    },
-    dottedLine: {
-        flex: 1,
-        height: 2,
-        backgroundColor: 'rgba(255,255,255,0.4)',
+    dashedLine: {
+        width: '80%',
+        height: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        marginVertical: 4,
     },
     planeIcon: {
-        fontSize: 22,
-        marginHorizontal: 4,
+        fontSize: 18,
     },
-    durationText: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.85)',
-        marginTop: 8,
-        fontWeight: '600',
+    directLabel: {
+        fontSize: 10,
+        color: 'rgba(255, 255, 255, 0.5)',
+        marginTop: 2,
     },
     dateRow: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
         borderRadius: 12,
-        padding: 14,
+        padding: 12,
         marginBottom: 16,
+        gap: 12,
     },
     dateItem: {
+        flex: 1,
+    },
+    dateHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 4,
+        marginBottom: 4,
+    },
+    dateIcon: {
+        fontSize: 12,
     },
     dateLabel: {
         fontSize: 11,
-        color: 'rgba(255,255,255,0.8)',
-        marginBottom: 4,
+        color: 'rgba(255, 255, 255, 0.6)',
     },
     dateValue: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#fff',
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#ffffff',
     },
-    tearLine: {
+    actionRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
-    tearDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: 'rgba(255,255,255,0.25)',
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        gap: 8,
         alignItems: 'center',
     },
-    footerButtons: {
+    detailsButton: {
+        flex: 1,
+        backgroundColor: 'rgba(80, 120, 180, 0.4)',
+        borderRadius: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(100, 150, 220, 0.4)',
+    },
+    detailsButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#ffffff',
+    },
+    amenitiesButton: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    viewDetailsBtn: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
+        alignItems: 'center',
+        backgroundColor: 'rgba(80, 120, 180, 0.4)',
+        borderRadius: 10,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)',
-    },
-    viewDetailsBtnText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    amenitiesBtn: {
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        borderColor: 'rgba(100, 150, 220, 0.4)',
+        paddingVertical: 12,
         paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.25)',
+        gap: 4,
     },
-    amenitiesBtnText: {
-        fontSize: 12,
+    amenitiesIcon: {
+        fontSize: 14,
+    },
+    amenitiesText: {
+        fontSize: 13,
         fontWeight: '600',
-        color: '#fff',
+        color: '#ffffff',
     },
-    deleteBtn: {
-        padding: 8,
+    calendarButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        backgroundColor: 'rgba(80, 120, 180, 0.4)',
+        borderWidth: 1,
+        borderColor: 'rgba(100, 150, 220, 0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    deleteBtnText: {
-        fontSize: 20,
+    calendarIcon: {
+        fontSize: 18,
+    },
+    deleteButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    deleteIcon: {
+        fontSize: 16,
     },
 });

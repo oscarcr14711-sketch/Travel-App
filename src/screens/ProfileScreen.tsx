@@ -32,6 +32,13 @@ export default function ProfileScreen({ navigation }: any) {
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>App Settings</Text>
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => navigation.navigate('Settings')}
+                    >
+                        <Text style={styles.menuText}>⚙️ Theme Settings</Text>
+                        <Text style={styles.menuArrow}>›</Text>
+                    </TouchableOpacity>
                     <View style={styles.menuItem}>
                         <Text style={styles.menuText}>Notifications</Text>
                     </View>

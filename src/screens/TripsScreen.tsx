@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing } from '../theme';
 import { getUserTrips, deleteTrip } from '../services/firebase.service';
 import { Trip } from '../types/trip.types';
 import FlightTicketCard from '../components/FlightTicketCard';
 import BusTicketCard from '../components/BusTicketCard';
+import StarryBackground from '../components/StarryBackground';
 
 export default function TripsScreen({ navigation, route }: any) {
     const [trips, setTrips] = useState<Trip[]>([]);
@@ -62,84 +64,106 @@ export default function TripsScreen({ navigation, route }: any) {
     }, [route.params?.refresh]);
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>📅 My Trips</Text>
-                <Text style={styles.subtitle}>Smart itinerary & timeline</Text>
+        <StarryBackground>
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <Text style={styles.headerIcon}>🗺️</Text>
+                    <View>
+                        <Text style={styles.title}>My Trips</Text>
+                        <Text style={styles.subtitle}>Smart itinerary & timeline</Text>
+                    </View>
+                </View>
+
+                <ScrollView
+                    style={styles.content}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {loading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color="#7C3AED" />
+                        </View>
+                    ) : trips.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyIcon}>✈️</Text>
+                            <Text style={styles.emptyTitle}>No trips planned</Text>
+                            <Text style={styles.emptyText}>
+                                Create your first trip to get started
+                            </Text>
+                        </View>
+                    ) : (
+                        <View style={styles.tripsContainer}>
+                            {trips.map((trip) => (
+                                trip.type === 'flight' ? (
+                                    <FlightTicketCard
+                                        key={trip.id}
+                                        trip={trip}
+                                        onDelete={handleDeleteTrip}
+                                        onViewDetails={() => navigation.navigate('TripDetail', { trip })}
+                                        onViewAmenities={() => navigation.navigate('FlightAmenities', { trip })}
+                                    />
+                                ) : (
+                                    <BusTicketCard
+                                        key={trip.id}
+                                        trip={trip}
+                                        onDelete={handleDeleteTrip}
+                                        onViewDetails={() => navigation.navigate('TripDetail', { trip })}
+                                        onViewAmenities={() => navigation.navigate('BusAmenities', { trip })}
+                                    />
+                                )
+                            ))}
+                        </View>
+                    )}
+                </ScrollView>
+
+                {/* Floating Add Button */}
+                <TouchableOpacity
+                    style={styles.addButtonContainer}
+                    onPress={() => navigation.navigate('TransportationSelection', { country: 'USA' })}
+                    activeOpacity={0.8}
+                >
+                    <LinearGradient
+                        colors={['#10B981', '#059669']}
+                        style={styles.addButton}
+                    >
+                        <Text style={styles.addButtonText}>+</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
             </View>
-
-            <ScrollView style={styles.content}>
-                {loading ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={colors.primary.main} />
-                    </View>
-                ) : trips.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyIcon}>🗺️</Text>
-                        <Text style={styles.emptyTitle}>No trips planned</Text>
-                        <Text style={styles.emptyText}>
-                            Create your first trip to get started
-                        </Text>
-                    </View>
-                ) : (
-                    <View style={styles.tripsContainer}>
-                        {trips.map((trip) => (
-                            trip.type === 'flight' ? (
-                                <FlightTicketCard
-                                    key={trip.id}
-                                    trip={trip}
-                                    onDelete={handleDeleteTrip}
-                                    onViewDetails={() => navigation.navigate('TripDetail', { trip })}
-                                    onViewAmenities={() => navigation.navigate('FlightAmenities', { trip })}
-                                />
-                            ) : (
-                                <BusTicketCard
-                                    key={trip.id}
-                                    trip={trip}
-                                    onDelete={handleDeleteTrip}
-                                    onViewDetails={() => navigation.navigate('TripDetail', { trip })}
-                                />
-                            )
-                        ))}
-                    </View>
-                )}
-            </ScrollView>
-
-            {/* Floating Add Button */}
-            <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => navigation.navigate('TransportationSelection', { country: 'USA' })}
-                activeOpacity={0.8}
-            >
-                <Text style={styles.addButtonText}>+</Text>
-            </TouchableOpacity>
-        </View>
+        </StarryBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.light.background,
     },
     header: {
-        paddingTop: spacing.xl,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingTop: spacing.xl + 20,
         paddingHorizontal: spacing.lg,
         paddingBottom: spacing.lg,
-        backgroundColor: colors.travel.hotel,
+        gap: spacing.md,
+    },
+    headerIcon: {
+        fontSize: 32,
     },
     title: {
-        ...typography.styles.h3,
-        color: colors.neutral.white,
-        marginBottom: spacing.xs,
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#ffffff',
+        marginBottom: 4,
     },
     subtitle: {
-        ...typography.styles.bodySmall,
-        color: colors.neutral.white,
-        opacity: 0.9,
+        fontSize: 14,
+        color: 'rgba(255, 255, 255, 0.7)',
     },
     content: {
         flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 100,
     },
     loadingContainer: {
         flex: 1,
@@ -158,39 +182,41 @@ const styles = StyleSheet.create({
         marginBottom: spacing.lg,
     },
     emptyTitle: {
-        ...typography.styles.h4,
-        color: colors.light.text,
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#ffffff',
         marginBottom: spacing.sm,
     },
     emptyText: {
-        ...typography.styles.body,
-        color: colors.light.textSecondary,
+        fontSize: 16,
+        color: 'rgba(255, 255, 255, 0.7)',
         textAlign: 'center',
     },
     tripsContainer: {
         paddingTop: spacing.lg,
         paddingBottom: 100,
     },
-    addButton: {
+    addButtonContainer: {
         position: 'absolute',
-        bottom: 80,
+        bottom: 90,
         right: 20,
-        width: 60,
-        height: 60,
         borderRadius: 30,
-        backgroundColor: '#3B82F6',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#3B82F6',
+        shadowColor: '#10B981',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
+        shadowOpacity: 0.5,
         shadowRadius: 8,
         elevation: 8,
     },
+    addButton: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     addButtonText: {
-        fontSize: 36,
-        fontWeight: 'bold',
+        fontSize: 32,
+        fontWeight: '300',
         color: colors.neutral.white,
-        lineHeight: 36,
     },
 });

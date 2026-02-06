@@ -1,22 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, typography, spacing } from '../theme';
+import StarryBackground from '../components/StarryBackground';
 
 export default function CompanionScreen({ navigation }: any) {
     const handleARLuggage = () => {
-        // Navigate to AR Luggage Scanner
         navigation.navigate('ARLuggage');
     };
 
     const handlePhotoJournal = () => {
-        // Navigate to Photo Journal
         navigation.navigate('PhotoJournal');
     };
 
     const handleAirportMaps = () => {
-        // Coming soon
-        Alert.alert('Coming Soon!', 'Airport Maps & Guide will be available in a future update. 🗺️');
+        // Coming soon - no navigation
+    };
+
+    const handleTSASearch = () => {
+        navigation.navigate('TSASearch');
     };
 
     const renderFeatureCard = (
@@ -30,201 +31,180 @@ export default function CompanionScreen({ navigation }: any) {
         <View style={styles.card}>
             <View style={styles.cardHeader}>
                 <Text style={styles.cardIcon}>{icon}</Text>
-                <View style={styles.cardTitleContainer}>
-                    <Text style={styles.cardTitle}>{title}</Text>
-                    {!comingSoon && <Text style={styles.premiumBadge}>✨</Text>}
-                </View>
+                <Text style={styles.cardTitle}>{title}</Text>
+                {!comingSoon && <Text style={styles.sparkle}>✨</Text>}
             </View>
             <Text style={styles.cardDescription}>{description}</Text>
+
+            {/* Button */}
             <TouchableOpacity
-                style={[
-                    styles.actionButton,
-                    comingSoon && styles.actionButtonDisabled
-                ]}
+                style={styles.buttonContainer}
                 onPress={onPress}
                 disabled={comingSoon}
+                activeOpacity={0.8}
             >
-                <Text style={[
-                    styles.actionButtonText,
-                    comingSoon && styles.actionButtonTextDisabled
-                ]}>{buttonText}</Text>
+                {comingSoon ? (
+                    <View style={styles.disabledButton}>
+                        <Text style={styles.disabledButtonText}>{buttonText}</Text>
+                    </View>
+                ) : (
+                    <LinearGradient
+                        colors={['#6b5fcc', '#7c6fdd', '#6b5fcc']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.gradientButton}
+                    >
+                        <Text style={styles.buttonText}>{buttonText}</Text>
+                    </LinearGradient>
+                )}
             </TouchableOpacity>
         </View>
     );
 
     return (
-        <View style={styles.container}>
-            {/* Header */}
-            <LinearGradient
-                colors={['#1e3c72', '#2a5298']}
-                style={styles.header}
-            >
-                <Text style={styles.headerTitle}>🎒 Travel Companion</Text>
-                <Text style={styles.headerSubtitle}>Premium tools for smarter travel</Text>
-            </LinearGradient>
+        <StarryBackground>
+            <View style={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>🎒 Travel Companion</Text>
+                    <Text style={styles.headerSubtitle}>Smart tools for better travel</Text>
+                </View>
 
-            <ScrollView
-                style={styles.content}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Section: Smart Packing */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🧳 Smart Packing</Text>
+                <ScrollView
+                    style={styles.content}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
                     {renderFeatureCard(
                         '📦',
                         'AR Luggage Scanner',
                         'Measure bag dimensions and estimate weight using your camera. Never worry about size limits again!',
-                        'Try AR Scanner ✨',
+                        'Try AR Scanner',
                         handleARLuggage
                     )}
-                </View>
 
-                {/* Section: Travel Memories */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📸 Travel Memories</Text>
                     {renderFeatureCard(
                         '📷',
                         'Photo Journal',
                         'AI-powered captions, organized timeline, and shareable highlight reels of your adventures.',
-                        'Try Photo Journal ✨',
+                        'Try Photo Journal',
                         handlePhotoJournal
                     )}
-                </View>
 
-                {/* Section: Airport Navigator */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🗺️ Airport Navigator</Text>
                     {renderFeatureCard(
-                        '📍',
+                        '🗺️',
                         'Airport Maps & Guide',
                         'Find restaurants, lounges, WiFi hotspots, power outlets, and more with interactive airport maps.',
                         'Coming Soon',
                         handleAirportMaps,
                         true
                     )}
-                </View>
 
-                {/* Bottom spacing */}
-                <View style={{ height: 40 }} />
-            </ScrollView>
-        </View>
+                    {renderFeatureCard(
+                        '🔍',
+                        'Can I Bring This?',
+                        'Search TSA guidelines to quickly find out if items are allowed in carry-on or checked baggage.',
+                        'Search Items →',
+                        handleTSASearch
+                    )}
+
+                    {/* Bottom spacing */}
+                    <View style={{ height: 40 }} />
+                </ScrollView>
+            </View>
+        </StarryBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f7fa',
     },
     header: {
         paddingTop: Platform.OS === 'ios' ? 60 : 40,
-        paddingBottom: 24,
+        paddingBottom: 20,
         paddingHorizontal: 20,
     },
     headerTitle: {
         fontSize: 28,
         fontWeight: '700',
-        color: '#fff',
-        marginBottom: 6,
+        color: '#ffffff',
+        marginBottom: 4,
     },
     headerSubtitle: {
         fontSize: 15,
-        color: 'rgba(255,255,255,0.9)',
+        color: 'rgba(255,255,255,0.7)',
     },
     content: {
         flex: 1,
     },
     scrollContent: {
-        padding: 16,
-    },
-    section: {
-        marginBottom: 24,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#1e3c72',
-        marginBottom: 12,
-        paddingLeft: 4,
+        padding: 20,
+        paddingBottom: 100,
     },
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
+        backgroundColor: '#e8e8f0',
+        borderRadius: 20,
         padding: 20,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 10,
+        gap: 8,
     },
     cardIcon: {
-        fontSize: 32,
-        marginRight: 12,
-    },
-    cardTitleContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
+        fontSize: 28,
     },
     cardTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333',
+        color: '#1a1a2e',
+        flex: 1,
     },
-    premiumBadge: {
+    sparkle: {
         fontSize: 18,
     },
     cardDescription: {
-        fontSize: 15,
-        lineHeight: 22,
-        color: '#666',
+        fontSize: 14,
+        lineHeight: 20,
+        color: '#4a4a5e',
         marginBottom: 16,
     },
-    actionButton: {
-        backgroundColor: '#3B82F6',
+    buttonContainer: {
         borderRadius: 12,
+        overflow: 'hidden',
+    },
+    gradientButton: {
         paddingVertical: 14,
+        borderRadius: 12,
         alignItems: 'center',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#3B82F6',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 6,
-            },
-        }),
+        shadowColor: '#6b5fcc',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
     },
-    actionButtonDisabled: {
-        backgroundColor: '#9CA3AF',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOpacity: 0.1,
-            },
-        }),
-    },
-    actionButtonText: {
+    buttonText: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#fff',
+        color: '#ffffff',
     },
-    actionButtonTextDisabled: {
-        color: '#E5E7EB',
+    disabledButton: {
+        backgroundColor: 'rgba(150, 150, 170, 0.4)',
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    disabledButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.6)',
     },
 });

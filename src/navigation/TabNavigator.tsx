@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { colors } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 import HomeScreen from '../screens/HomeScreen';
 import TicketsScreen from '../screens/TicketsScreen';
 import TripsScreen from '../screens/TripsScreen';
@@ -11,24 +11,25 @@ import ProfileScreen from '../screens/ProfileScreen';
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
+    const { theme } = useTheme();
+
     return (
         <Tab.Navigator
             screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: colors.primary.main,
-                tabBarInactiveTintColor: colors.neutral.gray400,
+                tabBarActiveTintColor: theme.tabBarActive,
+                tabBarInactiveTintColor: theme.tabBarInactive,
                 tabBarStyle: {
-                    backgroundColor: colors.neutral.white,
-                    borderTopWidth: 1,
-                    borderTopColor: colors.light.border,
-                    paddingTop: 8,
-                    paddingBottom: 8,
-                    height: 64,
+                    backgroundColor: theme.tabBarBackground,
+                    borderTopWidth: 0,
+                    paddingTop: 10,
+                    paddingBottom: 10,
+                    height: 75,
                 },
                 tabBarLabelStyle: {
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: '600',
-                    marginTop: 4,
+                    marginTop: 2,
                 },
             }}
         >
@@ -79,7 +80,7 @@ export default function TabNavigator() {
 // Simple emoji-based icon component
 const TabIcon = ({ icon, color }: { icon: string; color: string }) => {
     return (
-        <Text style={{ fontSize: 24, color }}>
+        <Text style={{ fontSize: 26, color, opacity: 1 }}>
             {icon}
         </Text>
     );

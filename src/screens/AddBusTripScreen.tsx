@@ -8,6 +8,7 @@ import SmartTimeInput from '../components/SmartTimeInput';
 import AutocompleteInput from '../components/AutocompleteInput';
 import { CITIES, City } from '../data/cities';
 import { BUS_COMPANIES, BusCompany } from '../data/airlines';
+import { getBusInfoForCompany } from '../data/bus-company-mappings';
 
 export default function AddBusTripScreen({ navigation, route }: any) {
     const { country } = route.params || { country: 'USA' };
@@ -31,6 +32,10 @@ export default function AddBusTripScreen({ navigation, route }: any) {
         }
         try {
             setLoading(true);
+
+            // Get bus model and service class based on company
+            const busInfo = getBusInfoForCompany(busCompany);
+
             await createTrip({
                 type: 'bus',
                 country,
@@ -38,6 +43,8 @@ export default function AddBusTripScreen({ navigation, route }: any) {
                 destination,
                 busNumber,
                 busCompany,
+                busModel: busInfo?.busModel,
+                busServiceClass: busInfo?.busServiceClass,
                 departureStation,
                 arrivalStation,
                 departureDate,
