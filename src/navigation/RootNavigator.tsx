@@ -13,6 +13,8 @@ import ARLuggageScreen from '../screens/ARLuggageScreen';
 import PhotoJournalScreen from '../screens/PhotoJournalScreen';
 import TSASearchScreen from '../screens/TSASearchScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import AirportMapsScreen from '../screens/AirportMapsScreen';
+import ScanTicketScreen from '../screens/ScanTicketScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -68,6 +70,15 @@ export default function RootNavigator() {
                 <Stack.Screen
                     name="Settings"
                     component={SettingsScreen}
+                />
+                <Stack.Screen
+                    name="AirportMaps"
+                    component={AirportMapsScreen}
+                />
+                <Stack.Screen
+                    name="ScanTicket"
+                    component={ScanTicketScreen}
+                    options={{ headerShown: false }}
                 />
             </Stack.Navigator>
         </NavigationContainer>

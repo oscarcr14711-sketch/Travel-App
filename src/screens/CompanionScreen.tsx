@@ -2,8 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import StarryBackground from '../components/StarryBackground';
+import { AIRPORTS, Airport } from '../data/airports-data';
+import { Modal, FlatList, TextInput } from 'react-native';
+import { useState } from 'react';
 
 export default function CompanionScreen({ navigation }: any) {
+    const [showAirportModal, setShowAirportModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
     const handleARLuggage = () => {
         navigation.navigate('ARLuggage');
     };
@@ -13,8 +19,14 @@ export default function CompanionScreen({ navigation }: any) {
     };
 
     const handleAirportMaps = () => {
-        // Coming soon - no navigation
+        setShowAirportModal(true);
     };
+
+    const filteredAirports = AIRPORTS.filter(airport =>
+        airport.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        airport.iataCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        airport.city.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const handleTSASearch = () => {
         navigation.navigate('TSASearch');
@@ -95,9 +107,9 @@ export default function CompanionScreen({ navigation }: any) {
                         '🗺️',
                         'Airport Maps & Guide',
                         'Find restaurants, lounges, WiFi hotspots, power outlets, and more with interactive airport maps.',
-                        'Coming Soon',
+                        'Explore Maps',
                         handleAirportMaps,
-                        true
+                        false
                     )}
 
                     {renderFeatureCard(
@@ -111,6 +123,61 @@ export default function CompanionScreen({ navigation }: any) {
                     {/* Bottom spacing */}
                     <View style={{ height: 40 }} />
                 </ScrollView>
+
+                {/* Airport Selection Modal */}
+                <Modal
+                    visible={showAirportModal}
+                    animationType="slide"
+                    transparent={true}
+                    onRequestClose={() => setShowAirportModal(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Select Airport</Text>
+                                <TouchableOpacity
+                                    onPress={() => setShowAirportModal(false)}
+                                    style={styles.closeButton}
+                                >
+                                    <Text style={styles.closeButtonText}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search by city or code (e.g. MEX)"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoCorrect={false}
+                            />
+
+                            <FlatList
+                                data={filteredAirports}
+                                keyExtractor={(item) => item.id}
+                                showsVerticalScrollIndicator={false}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity
+                                        style={styles.airportItem}
+                                        onPress={() => {
+                                            setShowAirportModal(false);
+                                            navigation.navigate('AirportMaps', { airport: item });
+                                        }}
+                                    >
+                                        <View style={styles.airportInfo}>
+                                            <Text style={styles.airportCode}>{item.iataCode}</Text>
+                                            <View>
+                                                <Text style={styles.airportCity}>{item.city}</Text>
+                                                <Text style={styles.airportName}>{item.name}</Text>
+                                            </View>
+                                        </View>
+                                        <Text style={styles.arrow}>→</Text>
+                                    </TouchableOpacity>
+                                )}
+                                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                            />
+                        </View>
+                    </View>
+                </Modal>
             </View>
         </StarryBackground>
     );
@@ -206,5 +273,78 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: 'rgba(255, 255, 255, 0.6)',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        height: '80%',
+        padding: 20,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#1a1a2e',
+    },
+    closeButton: {
+        padding: 5,
+    },
+    closeButtonText: {
+        fontSize: 24,
+        color: '#666',
+    },
+    searchInput: {
+        backgroundColor: '#f0f0f5',
+        borderRadius: 12,
+        padding: 12,
+        fontSize: 16,
+        marginBottom: 20,
+    },
+    airportItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+    },
+    airportInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        flex: 1,
+    },
+    airportCode: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#6b5fcc',
+        width: 50,
+    },
+    airportCity: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1a1a2e',
+        marginBottom: 2,
+    },
+    airportName: {
+        fontSize: 13,
+        color: '#666',
+    },
+    arrow: {
+        fontSize: 20,
+        color: '#ccc',
+    },
+    separator: {
+        height: 1,
+        backgroundColor: '#f0f0f0',
     },
 });

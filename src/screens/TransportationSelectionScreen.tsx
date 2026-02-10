@@ -28,7 +28,7 @@ export default function TransportationSelectionScreen({ navigation, route }: any
 
             {/* Top Half - Airplane */}
             <TouchableOpacity
-                style={[styles.half, styles.topHalf]}
+                style={[styles.section, styles.flightSection]}
                 onPress={() => handleTransportationSelect('Airplane')}
                 activeOpacity={0.9}
             >
@@ -40,13 +40,25 @@ export default function TransportationSelectionScreen({ navigation, route }: any
 
             {/* Bottom Half - Bus */}
             <TouchableOpacity
-                style={[styles.half, styles.bottomHalf]}
+                style={[styles.section, styles.busSection]}
                 onPress={() => handleTransportationSelect('Bus')}
                 activeOpacity={0.9}
             >
                 <View style={styles.buttonContent}>
                     <Text style={styles.emoji}>🚌</Text>
                     <Text style={styles.label}>Bus</Text>
+                </View>
+            </TouchableOpacity>
+
+            {/* Scan Ticket Section */}
+            <TouchableOpacity
+                style={[styles.section, styles.scanSection]}
+                onPress={() => navigation.navigate('ScanTicket')}
+                activeOpacity={0.9}
+            >
+                <View style={styles.buttonContent}>
+                    <Text style={styles.emoji}>📸</Text>
+                    <Text style={styles.label}>Scan Ticket</Text>
                 </View>
             </TouchableOpacity>
         </View>
@@ -79,20 +91,31 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#1E3A8A',
     },
-    half: {
+    section: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        width: '100%',
     },
-    topHalf: {
-        backgroundColor: '#3B82F6', // Sky Blue for Airplane
-        borderBottomWidth: 2,
-        borderBottomColor: colors.neutral.white,
+    topHalf: { // Kept for reference but unused, now using specific sections
+        backgroundColor: '#3B82F6',
     },
-    bottomHalf: {
-        backgroundColor: '#10B981', // Green for Bus
-        borderTopWidth: 2,
-        borderTopColor: colors.neutral.white,
+    flightSection: {
+        backgroundColor: '#3B82F6', // Sky Blue
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.2)',
+    },
+    busSection: {
+        backgroundColor: '#10B981', // Green
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.2)',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.2)',
+    },
+    scanSection: {
+        backgroundColor: '#8B5CF6', // Violet for Scan
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.2)',
     },
     buttonContent: {
         alignItems: 'center',

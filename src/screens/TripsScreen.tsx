@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing } from '../theme';
 import { getUserTrips, deleteTrip } from '../services/firebase.service';
+import { cancelTripNotifications } from '../services/notifications.service';
 import { Trip } from '../types/trip.types';
 import FlightTicketCard from '../components/FlightTicketCard';
 import BusTicketCard from '../components/BusTicketCard';
@@ -37,6 +38,9 @@ export default function TripsScreen({ navigation, route }: any) {
                     onPress: async () => {
                         try {
                             setLoading(true);
+                            // Cancel all notifications for this trip
+                            await cancelTripNotifications(tripId);
+                            // Delete the trip
                             await deleteTrip(tripId);
                             await fetchTrips();
                         } catch (error) {

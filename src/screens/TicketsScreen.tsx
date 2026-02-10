@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, Linking, Platform } from 'react-native';
+import * as Sharing from 'expo-sharing';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography, spacing } from '../theme';
 import { Ticket } from '../types/ticket.types';
 import { pickTicketPDF, getUserTickets, deleteTicket } from '../services/ticket.service';
 
-export default function TicketsScreen() {
+export default function TicketsScreen({ navigation }: any) {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -74,12 +75,12 @@ export default function TicketsScreen() {
     const handleOpenTicket = async (ticket: Ticket) => {
         try {
             console.log('Opening ticket:', ticket.fileUri);
-            const supported = await Linking.canOpenURL(ticket.fileUri);
-
-            if (supported) {
-                await Linking.openURL(ticket.fileUri);
+            // Use expo-sharing to open the file (Works without rebuild)
+            const canShare = await Sharing.isAvailableAsync();
+            if (canShare) {
+                await Sharing.shareAsync(ticket.fileUri);
             } else {
-                Alert.alert('Info', 'Could not open file directly. Path: ' + ticket.fileUri);
+                Alert.alert('Info', 'Sharing not available on this device');
             }
         } catch (error) {
             console.error('Error opening ticket:', error);

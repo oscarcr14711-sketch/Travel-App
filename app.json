@@ -1,4 +1,80 @@
 {
     "name": "FlyRide",
-    "displayName": "FlyRide"
+    "displayName": "FlyRide",
+    "expo": {
+        "name": "FlyRide",
+        "slug": "flyride",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "splash": {
+            "image": "./assets/splash.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#1e3c72"
+        },
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "com.flyride.app",
+            "infoPlist": {
+                "NSCameraUsageDescription": "FlyRide needs camera access for AR luggage scanning and document capture.",
+                "NSLocationWhenInUseUsageDescription": "FlyRide needs your location to show airport maps and navigation.",
+                "NSLocationAlwaysUsageDescription": "FlyRide uses background location for flight status and airport navigation.",
+                "NSPhotoLibraryUsageDescription": "FlyRide needs photo library access to save trip photos.",
+                "NSPhotoLibraryAddUsageDescription": "FlyRide needs permission to save photos to your library."
+            },
+            "config": {
+                "usesNonExemptEncryption": false
+            }
+        },
+        "android": {
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/adaptive-icon.png",
+                "backgroundColor": "#1e3c72"
+            },
+            "package": "com.flyride.app",
+            "permissions": [
+                "CAMERA",
+                "ACCESS_FINE_LOCATION",
+                "ACCESS_COARSE_LOCATION",
+                "WRITE_EXTERNAL_STORAGE",
+                "READ_EXTERNAL_STORAGE",
+                "RECEIVE_BOOT_COMPLETED",
+                "VIBRATE"
+            ],
+            "config": {
+                "googleMaps": {
+                    "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+                }
+            }
+        },
+        "plugins": [
+            [
+                "expo-camera",
+                {
+                    "cameraPermission": "Allow FlyRide to access your camera for AR luggage scanning."
+                }
+            ],
+            [
+                "expo-notifications",
+                {
+                    "icon": "./assets/notification-icon.png",
+                    "color": "#1e3c72",
+                    "sounds": []
+                }
+            ],
+            [
+                "expo-media-library",
+                {
+                    "photosPermission": "Allow FlyRide to save trip photos.",
+                    "savePhotosPermission": "Allow FlyRide to save photos."
+                }
+            ],
+            "react-native-maps"
+        ],
+        "extra": {
+            "eas": {
+                "projectId": "flyride"
+            }
+        }
+    }
 }

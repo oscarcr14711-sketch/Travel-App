@@ -6,6 +6,7 @@ import { BusServiceClass } from '../types/trip.types';
 import { getBusModelData, getBusClassAmenities, BusClassAmenities } from '../data/bus-models.data';
 import { getCompanyModels } from '../data/company-fleet-mapping';
 import { normalizeModelName } from '../data/model-aliases';
+import { getBusPhotos } from '../data/bus-photos';
 
 interface RouteParams {
     trip: any;
@@ -45,19 +46,11 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
         );
     }
 
-    // Check if we should show photos (only for Marcopolo G8 DD or Marcopolo Mexico G8 Paradiso 1800 DD)
-    const shouldShowPhotos = busModel === 'Marcopolo G8 DD' || busModel === 'Marcopolo Mexico G8 Paradiso 1800 DD';
-
-    // Photo gallery images for Marcopolo G8 DD
-    const marcopoloPhotos = [
-        require('../assets/images/Amenities/Marcopolo 1.jpeg'),
-        require('../assets/images/Amenities/Marcopolo 2.jpeg'),
-        require('../assets/images/Amenities/Marcopolo 3.jpeg'),
-        require('../assets/images/Amenities/Marcopolo 4.jpeg'),
-        require('../assets/images/Amenities/Marcopolo 5.jpeg'),
-        require('../assets/images/Amenities/Marcopolo 6.jpeg'),
-        require('../assets/images/Amenities/Marcopolo 7.jpeg'),
-    ];
+    // Get photos for this bus model (if available)
+    const busPhotoSet = getBusPhotos(busModel);
+    const shouldShowPhotos = !!busPhotoSet;
+    const photos = busPhotoSet?.photos || [];
+    const photoCredits = busPhotoSet?.credits || '';
 
     const serviceClassNames: Record<BusServiceClass, string> = {
         'economy': 'Economy Class',
@@ -217,11 +210,11 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
                     </View>
                 )}
 
-                {/* Photo Gallery - Only for Marcopolo G8 DD */}
+                {/* Photo Gallery - Dynamic for any bus model */}
                 {shouldShowPhotos && (
                     <View style={styles.photoGallerySection}>
                         <Text style={styles.galleryTitle}>📸 Interior Photos</Text>
-                        <Text style={styles.gallerySubtitle}>ETN Marcopolo G8 DD Luxury Experience</Text>
+                        <Text style={styles.gallerySubtitle}>{displayModelName}</Text>
 
                         <ScrollView
                             horizontal
@@ -229,7 +222,7 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
                             style={styles.photoGallery}
                             contentContainerStyle={styles.photoGalleryContent}
                         >
-                            {marcopoloPhotos.map((photo, index) => (
+                            {photos.map((photo, index) => (
                                 <TouchableOpacity
                                     key={index}
                                     style={styles.photoFrame}
@@ -244,40 +237,47 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
+
+                        {/* Photo Credits */}
+                        {photoCredits && (
+                            <Text style={styles.photoCredits}>{photoCredits}</Text>
+                        )}
                     </View>
                 )}
 
                 <View style={{ height: 40 }} />
             </ScrollView>
 
-            {/* Fullscreen Image Modal */}
+            {/* Fullscreen Image Modal with Zoom */}
             <Modal
                 visible={selectedImageIndex !== null}
                 transparent={true}
                 animationType="fade"
                 onRequestClose={() => setSelectedImageIndex(null)}
             >
-                <TouchableOpacity
-                    style={styles.modalContainer}
-                    activeOpacity={1}
-                    onPress={() => setSelectedImageIndex(null)}
-                >
-                    <View style={styles.modalContent}>
-                        {selectedImageIndex !== null && (
+                <View style={styles.modalContainer}>
+                    <ScrollView
+                        contentContainerStyle={styles.zoomContainer}
+                        maximumZoomScale={3}
+                        minimumZoomScale={1}
+                        showsHorizontalScrollIndicator={false}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {selectedImageIndex !== null && photos[selectedImageIndex] && (
                             <Image
-                                source={marcopoloPhotos[selectedImageIndex]}
+                                source={photos[selectedImageIndex]}
                                 style={styles.fullscreenImage}
                                 resizeMode="contain"
                             />
                         )}
-                        <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={() => setSelectedImageIndex(null)}
-                        >
-                            <Text style={styles.closeButtonText}>✕ Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
+                    </ScrollView>
+                    <TouchableOpacity
+                        style={styles.closeButton}
+                        onPress={() => setSelectedImageIndex(null)}
+                    >
+                        <Text style={styles.closeButtonText}>✕ Close</Text>
+                    </TouchableOpacity>
+                </View>
             </Modal>
         </View>
     );
@@ -493,6 +493,14 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+    photoCredits: {
+        fontSize: 11,
+        color: '#888',
+        fontStyle: 'italic',
+        textAlign: 'center',
+        marginTop: 12,
+        paddingHorizontal: 20,
+    },
     // Fullscreen Modal Styles
     modalContainer: {
         flex: 1,
@@ -505,6 +513,13 @@ const styles = StyleSheet.create({
         height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    zoomContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        minWidth: '100%',
+        minHeight: '100%',
     },
     fullscreenImage: {
         width: '100%',

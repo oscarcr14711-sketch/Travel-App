@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { colors, typography, spacing } from '../theme';
 import { createTrip } from '../services/firebase.service';
+import { scheduleAllTripNotifications } from '../services/notifications.service';
 import SmartDateInput from '../components/SmartDateInput';
 import SmartTimeInput from '../components/SmartTimeInput';
 
@@ -36,7 +37,7 @@ export default function AddBusTripScreen({ navigation, route }: any) {
             // Get bus model and service class based on company
             const busInfo = getBusInfoForCompany(busCompany);
 
-            await createTrip({
+            const tripData = {
                 type: 'bus',
                 country,
                 origin,
@@ -51,7 +52,16 @@ export default function AddBusTripScreen({ navigation, route }: any) {
                 departureTime,
                 arrivalDate: arrivalDate || departureDate,
                 arrivalTime: arrivalTime || departureTime,
+            };
+
+            const newTrip = await createTrip(tripData);
+
+            // Schedule all trip notifications
+            await scheduleAllTripNotifications({
+                ...tripData,
+                id: newTrip.id
             });
+
             navigation.navigate('Main', { screen: 'Trips', params: { refresh: true } });
         } catch (error) {
             console.error('Error saving trip:', error);

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { colors, typography, spacing } from '../theme';
 import { createTrip } from '../services/firebase.service';
+import { scheduleAllTripNotifications } from '../services/notifications.service';
 import { CabinClass } from '../types/trip.types';
 
 import AutocompleteInput from '../components/AutocompleteInput';
@@ -35,7 +36,7 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
         try {
             setLoading(true);
 
-            await createTrip({
+            const tripData = {
                 type: 'flight',
                 country,
                 origin,
@@ -47,6 +48,14 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
                 departureTime,
                 arrivalDate: arrivalDate || departureDate,
                 arrivalTime: arrivalTime || departureTime,
+            };
+
+            const newTrip = await createTrip(tripData);
+
+            // Schedule all trip notifications
+            await scheduleAllTripNotifications({
+                ...tripData,
+                id: newTrip.id
             });
 
             // Navigate back to trips screen

@@ -7,6 +7,7 @@ import { getWeatherForDestination, WeatherData, getWeatherEmoji } from '../servi
 import { generateChecklistForTrip, toggleChecklistItem, addCustomChecklistItem, ChecklistItem } from '../services/checklist.service';
 import { getBudgetForTrip, addExpense, deleteExpense, setTotalBudget, getTotalSpent } from '../services/budget.service';
 import { BudgetData, Expense, EXPENSE_CATEGORIES } from '../types/budget.types';
+import { findAirport } from '../data/airports-data';
 
 type TabType = 'overview' | 'checklist' | 'timeline' | 'budget';
 
@@ -129,54 +130,84 @@ export default function TripDetailScreen({ route, navigation }: any) {
                     )}
                 </View>
 
+
+
+                {/* Airport Maps */}
+                {
+                    (findAirport(trip.origin) || findAirport(trip.destination)) && (
+                        <View style={styles.mapsContainer}>
+                            {findAirport(trip.origin) && (
+                                <TouchableOpacity
+                                    style={styles.mapButton}
+                                    onPress={() => navigation.navigate('AirportMaps', { airport: findAirport(trip.origin) })}
+                                >
+                                    <Text style={styles.mapButtonIcon}>🗺️</Text>
+                                    <Text style={styles.mapButtonText}>{findAirport(trip.origin)?.iataCode} Map</Text>
+                                </TouchableOpacity>
+                            )}
+                            {findAirport(trip.destination) && (
+                                <TouchableOpacity
+                                    style={styles.mapButton}
+                                    onPress={() => navigation.navigate('AirportMaps', { airport: findAirport(trip.destination) })}
+                                >
+                                    <Text style={styles.mapButtonIcon}>🗺️</Text>
+                                    <Text style={styles.mapButtonText}>{findAirport(trip.destination)?.iataCode} Map</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )
+                }
+
                 {/* Weather Card */}
-                {weather && (
-                    <View style={styles.weatherCard}>
-                        <LinearGradient
-                            colors={['#667eea', '#764ba2']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.weatherGradient}
-                        >
-                            <View style={styles.weatherHeader}>
-                                <Text style={styles.weatherLocation}>📍 {trip.destination}</Text>
-                                <View style={styles.weatherLiveBadge}>
-                                    <View style={styles.liveDot} />
-                                    <Text style={styles.weatherLiveText}>
-                                        {weather.isRealTime ? 'LIVE' : 'CACHED'}
-                                    </Text>
+                {
+                    weather && (
+                        <View style={styles.weatherCard}>
+                            <LinearGradient
+                                colors={['#667eea', '#764ba2']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.weatherGradient}
+                            >
+                                <View style={styles.weatherHeader}>
+                                    <Text style={styles.weatherLocation}>📍 {trip.destination}</Text>
+                                    <View style={styles.weatherLiveBadge}>
+                                        <View style={styles.liveDot} />
+                                        <Text style={styles.weatherLiveText}>
+                                            {weather.isRealTime ? 'LIVE' : 'CACHED'}
+                                        </Text>
+                                    </View>
                                 </View>
-                            </View>
 
-                            <View style={styles.weatherMain}>
-                                <Text style={styles.weatherEmoji}>{getWeatherEmoji(weather.condition)}</Text>
-                                <View style={styles.weatherTempContainer}>
-                                    <Text style={styles.weatherTemp}>{Math.round(weather.temp)}°</Text>
-                                    <Text style={styles.weatherUnit}>F</Text>
+                                <View style={styles.weatherMain}>
+                                    <Text style={styles.weatherEmoji}>{getWeatherEmoji(weather.condition)}</Text>
+                                    <View style={styles.weatherTempContainer}>
+                                        <Text style={styles.weatherTemp}>{Math.round(weather.temp)}°</Text>
+                                        <Text style={styles.weatherUnit}>F</Text>
+                                    </View>
                                 </View>
-                            </View>
 
-                            <Text style={styles.weatherCondition}>{weather.condition}</Text>
+                                <Text style={styles.weatherCondition}>{weather.condition}</Text>
 
-                            <View style={styles.weatherDetails}>
-                                <View style={styles.weatherDetailItem}>
-                                    <Text style={styles.weatherDetailLabel}>Feels Like</Text>
-                                    <Text style={styles.weatherDetailValue}>{Math.round(weather.feelsLike)}°F</Text>
+                                <View style={styles.weatherDetails}>
+                                    <View style={styles.weatherDetailItem}>
+                                        <Text style={styles.weatherDetailLabel}>Feels Like</Text>
+                                        <Text style={styles.weatherDetailValue}>{Math.round(weather.feelsLike)}°F</Text>
+                                    </View>
+                                    <View style={styles.weatherDetailDivider} />
+                                    <View style={styles.weatherDetailItem}>
+                                        <Text style={styles.weatherDetailLabel}>Humidity</Text>
+                                        <Text style={styles.weatherDetailValue}>{weather.humidity}%</Text>
+                                    </View>
+                                    <View style={styles.weatherDetailDivider} />
+                                    <View style={styles.weatherDetailItem}>
+                                        <Text style={styles.weatherDetailLabel}>Wind</Text>
+                                        <Text style={styles.weatherDetailValue}>{Math.round(weather.windSpeed)} mph</Text>
+                                    </View>
                                 </View>
-                                <View style={styles.weatherDetailDivider} />
-                                <View style={styles.weatherDetailItem}>
-                                    <Text style={styles.weatherDetailLabel}>Humidity</Text>
-                                    <Text style={styles.weatherDetailValue}>{weather.humidity}%</Text>
-                                </View>
-                                <View style={styles.weatherDetailDivider} />
-                                <View style={styles.weatherDetailItem}>
-                                    <Text style={styles.weatherDetailLabel}>Wind</Text>
-                                    <Text style={styles.weatherDetailValue}>{Math.round(weather.windSpeed)} mph</Text>
-                                </View>
-                            </View>
-                        </LinearGradient>
-                    </View>
-                )}
+                            </LinearGradient>
+                        </View>
+                    )
+                }
 
                 {/* Quick Stats */}
                 <View style={styles.statsRow}>
@@ -193,7 +224,7 @@ export default function TripDetailScreen({ route, navigation }: any) {
                         <Text style={styles.statLabel}>Current Time</Text>
                     </View>
                 </View>
-            </ScrollView>
+            </ScrollView >
         );
     };
 
@@ -1925,6 +1956,43 @@ const styles = StyleSheet.create({
     },
     modalButtonTextConfirm: {
         color: '#fff',
+    },
+    mapsContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginHorizontal: 20,
+        marginBottom: 20,
+    },
+    mapButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 1,
+            },
+        }),
+    },
+    mapButtonIcon: {
+        fontSize: 18,
+        marginRight: 8,
+    },
+    mapButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1a1a1a',
     },
 });
 
