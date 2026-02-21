@@ -42,7 +42,6 @@ module.exports = {
         favicon: './assets/favicon.png'
     },
     plugins: [
-
         'expo-document-picker',
         'expo-file-system',
         'expo-image-picker',
@@ -51,6 +50,27 @@ module.exports = {
             'expo-av',
             {
                 microphonePermission: 'Allow FlyRide to access your microphone for video features.'
+            }
+        ],
+        [
+            'expo-camera',
+            {
+                cameraPermission: 'Allow FlyRide to access your camera for AR luggage scanning.'
+            }
+        ],
+        [
+            'expo-media-library',
+            {
+                photosPermission: 'Allow FlyRide to save trip photos.',
+                savePhotosPermission: 'Allow FlyRide to save photos.'
+            }
+        ],
+        [
+            'expo-build-properties',
+            {
+                ios: {
+                    deploymentTarget: '16.0'
+                }
             }
         ]
     ],

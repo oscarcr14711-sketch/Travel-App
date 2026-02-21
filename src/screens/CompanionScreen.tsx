@@ -28,6 +28,10 @@ export default function CompanionScreen({ navigation }: any) {
         airport.city.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const handleDocumentVault = () => {
+        navigation.navigate('DocumentVault');
+    };
+
     const handleTSASearch = () => {
         navigation.navigate('TSASearch');
     };
@@ -118,6 +122,14 @@ export default function CompanionScreen({ navigation }: any) {
                         'Search TSA guidelines to quickly find out if items are allowed in carry-on or checked baggage.',
                         'Search Items →',
                         handleTSASearch
+                    )}
+
+                    {renderFeatureCard(
+                        '🛂',
+                        'Document Vault',
+                        'Securely store your passport photos, visa PDFs, insurance documents, hotel confirmations, and more.',
+                        'Open Vault',
+                        handleDocumentVault
                     )}
 
                     {/* Bottom spacing */}

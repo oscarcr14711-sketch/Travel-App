@@ -5,29 +5,29 @@ import {
 } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, spacing, typography } from '../theme';
-import { Airport } from '../data/airports-data';
+import { colors } from '../theme';
+import { BusTerminal } from '../data/bus-terminals.data';
 
 const SEARCH_CATEGORIES = [
     { key: 'food', emoji: '🍽️', label: 'Food', query: 'restaurant' },
     { key: 'coffee', emoji: '☕', label: 'Coffee', query: 'coffee' },
-    { key: 'lounge', emoji: '🛋️', label: 'Lounges', query: 'airport lounge' },
     { key: 'shop', emoji: '🛍️', label: 'Shops', query: 'shop' },
-    { key: 'bar', emoji: '🍺', label: 'Bars', query: 'bar' },
+    { key: 'atm', emoji: '🏧', label: 'ATM', query: 'ATM' },
     { key: 'pharmacy', emoji: '💊', label: 'Pharmacy', query: 'pharmacy' },
-    { key: 'exchange', emoji: '💱', label: 'Exchange', query: 'currency exchange' },
-    { key: 'charging', emoji: '🔌', label: 'Charging', query: 'charging station' },
+    { key: 'taxi', emoji: '🚕', label: 'Taxi', query: 'taxi stand' },
+    { key: 'gas', emoji: '⛽', label: 'Gas', query: 'gas station' },
+    { key: 'hotel', emoji: '🏨', label: 'Hotels', query: 'hotel' },
 ];
 
-export default function AirportMapsScreen() {
+export default function BusTerminalMapsScreen() {
     const navigation = useNavigation();
     const route = useRoute();
-    const { airport } = route.params as { airport: Airport };
+    const { terminal } = route.params as { terminal: BusTerminal };
     const mapRef = useRef<MapView>(null);
 
     const [mapRegion] = useState<Region>({
-        latitude: airport.coordinate.latitude,
-        longitude: airport.coordinate.longitude,
+        latitude: terminal.coordinate.latitude,
+        longitude: terminal.coordinate.longitude,
         latitudeDelta: 0.006,
         longitudeDelta: 0.006,
     });
@@ -36,19 +36,17 @@ export default function AirportMapsScreen() {
         navigation.setOptions({ headerShown: false });
     }, [navigation]);
 
-    // Open Apple Maps at the airport
     const openInMaps = () => {
-        const { latitude, longitude } = airport.coordinate;
+        const { latitude, longitude } = terminal.coordinate;
         if (Platform.OS === 'ios') {
-            Linking.openURL(`maps://?ll=${latitude},${longitude}&z=17&q=${encodeURIComponent(airport.name)}`);
+            Linking.openURL(`maps://?ll=${latitude},${longitude}&z=17&q=${encodeURIComponent(terminal.name)}`);
         } else {
-            Linking.openURL(`geo:${latitude},${longitude}?z=17&q=${encodeURIComponent(airport.name)}`);
+            Linking.openURL(`geo:${latitude},${longitude}?z=17&q=${encodeURIComponent(terminal.name)}`);
         }
     };
 
-    // Search a category near the airport in Apple Maps
     const searchInMaps = (query: string) => {
-        const { latitude, longitude } = airport.coordinate;
+        const { latitude, longitude } = terminal.coordinate;
         if (Platform.OS === 'ios') {
             Linking.openURL(`maps://?q=${encodeURIComponent(query)}&sll=${latitude},${longitude}&z=17`);
         } else {
@@ -58,8 +56,8 @@ export default function AirportMapsScreen() {
 
     const resetMap = () => {
         mapRef.current?.animateToRegion({
-            latitude: airport.coordinate.latitude,
-            longitude: airport.coordinate.longitude,
+            latitude: terminal.coordinate.latitude,
+            longitude: terminal.coordinate.longitude,
             latitudeDelta: 0.006,
             longitudeDelta: 0.006,
         }, 500);
@@ -76,8 +74,8 @@ export default function AirportMapsScreen() {
                         <Text style={styles.backText}>←</Text>
                     </TouchableOpacity>
                     <View style={styles.headerCenter}>
-                        <Text style={styles.headerTitle}>{airport.iataCode} Airport</Text>
-                        <Text style={styles.headerSub} numberOfLines={1}>{airport.name}</Text>
+                        <Text style={styles.headerTitle}>🚌 {terminal.shortName}</Text>
+                        <Text style={styles.headerSub} numberOfLines={1}>{terminal.name}</Text>
                     </View>
                     <TouchableOpacity style={styles.headerBtn} onPress={resetMap}>
                         <Text style={styles.resetText}>⟲</Text>
@@ -85,7 +83,7 @@ export default function AirportMapsScreen() {
                 </View>
             </SafeAreaView>
 
-            {/* Full-screen Apple Maps */}
+            {/* Full-screen Map */}
             <MapView
                 ref={mapRef}
                 style={styles.map}
@@ -103,18 +101,16 @@ export default function AirportMapsScreen() {
 
             {/* Bottom Panel */}
             <View style={styles.bottomPanel}>
-                {/* Open in Apple Maps */}
                 <TouchableOpacity style={styles.mapsBtn} onPress={openInMaps} activeOpacity={0.8}>
                     <Text style={styles.mapsBtnEmoji}>🗺️</Text>
                     <View style={styles.mapsBtnText}>
-                        <Text style={styles.mapsBtnTitle}>Open in Apple Maps</Text>
+                        <Text style={styles.mapsBtnTitle}>Open in Maps</Text>
                         <Text style={styles.mapsBtnSub}>Tap businesses for hours, phone & more</Text>
                     </View>
                     <Text style={styles.mapsBtnChevron}>›</Text>
                 </TouchableOpacity>
 
-                {/* Quick Search Categories */}
-                <Text style={styles.catTitle}>Find nearby at {airport.iataCode}</Text>
+                <Text style={styles.catTitle}>Find nearby at {terminal.shortName}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
                     {SEARCH_CATEGORIES.map(cat => (
                         <TouchableOpacity

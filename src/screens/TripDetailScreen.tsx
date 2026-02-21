@@ -8,6 +8,9 @@ import { generateChecklistForTrip, toggleChecklistItem, addCustomChecklistItem, 
 import { getBudgetForTrip, addExpense, deleteExpense, setTotalBudget, getTotalSpent } from '../services/budget.service';
 import { BudgetData, Expense, EXPENSE_CATEGORIES } from '../types/budget.types';
 import { findAirport } from '../data/airports-data';
+import { findBusTerminal } from '../data/bus-terminals.data';
+import FlightStatusCard from '../components/FlightStatusCard';
+import { shareTrip } from '../services/sharing.service';
 
 type TabType = 'overview' | 'checklist' | 'timeline' | 'budget';
 
@@ -130,10 +133,13 @@ export default function TripDetailScreen({ route, navigation }: any) {
                     )}
                 </View>
 
+                {/* Flight Status Tracker */}
+                {isFlightTrip && trip.flightNumber && (
+                    <FlightStatusCard flightNumber={trip.flightNumber} departureDate={trip.departureDate} />
+                )}
 
-
-                {/* Airport Maps */}
-                {
+                {/* Maps - Airport for flights, Terminal for buses */}
+                {isFlightTrip ? (
                     (findAirport(trip.origin) || findAirport(trip.destination)) && (
                         <View style={styles.mapsContainer}>
                             {findAirport(trip.origin) && (
@@ -156,7 +162,59 @@ export default function TripDetailScreen({ route, navigation }: any) {
                             )}
                         </View>
                     )
-                }
+                ) : (() => {
+                    // Use station name first (more specific), fall back to city name
+                    const originQuery = trip.departureStation || trip.origin;
+                    const destQuery = trip.arrivalStation || trip.destination;
+                    const originTerminal = findBusTerminal(originQuery);
+                    const destTerminal = findBusTerminal(destQuery);
+                    return (originTerminal || destTerminal) ? (
+                        <View style={styles.mapsContainer}>
+                            {originTerminal && (
+                                <TouchableOpacity
+                                    style={styles.mapButton}
+                                    onPress={() => navigation.navigate('BusTerminalMaps', { terminal: originTerminal })}
+                                >
+                                    <Text style={styles.mapButtonIcon}>🚌</Text>
+                                    <Text style={styles.mapButtonText}>{originTerminal.shortName} Map</Text>
+                                </TouchableOpacity>
+                            )}
+                            {destTerminal && (
+                                <TouchableOpacity
+                                    style={styles.mapButton}
+                                    onPress={() => navigation.navigate('BusTerminalMaps', { terminal: destTerminal })}
+                                >
+                                    <Text style={styles.mapButtonIcon}>🚌</Text>
+                                    <Text style={styles.mapButtonText}>{destTerminal.shortName} Map</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    ) : null;
+                })()}
+
+                {/* Quick Actions */}
+                <View style={styles.quickActions}>
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => navigation.navigate('PackingList', { trip })}
+                    >
+                        <Text style={styles.actionIcon}>🎒</Text>
+                        <Text style={styles.actionLabel}>Packing List</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={async () => {
+                            const success = await shareTrip(trip);
+                            if (!success) {
+                                Alert.alert('Share Trip', 'Failed to share trip');
+                            }
+                        }}
+                    >
+                        <Text style={styles.actionIcon}>📱</Text>
+                        <Text style={styles.actionLabel}>Share Trip</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {/* Weather Card */}
                 {
@@ -1990,6 +2048,45 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     mapButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1a1a1a',
+    },
+
+    // Quick Actions
+    quickActions: {
+        flexDirection: 'row',
+        gap: 12,
+        marginHorizontal: 20,
+        marginBottom: 20,
+    },
+    actionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
+    },
+    actionIcon: {
+        fontSize: 20,
+        marginRight: 6,
+    },
+    actionLabel: {
         fontSize: 14,
         fontWeight: '600',
         color: '#1a1a1a',

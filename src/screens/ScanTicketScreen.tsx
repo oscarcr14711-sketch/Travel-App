@@ -1,10 +1,60 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, SafeAreaView, StatusBar, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, SafeAreaView, StatusBar, Modal, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors, spacing, typography } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as MediaLibrary from 'expo-media-library';
+import TextRecognition from '@react-native-ml-kit/text-recognition';
+
+// ─── OCR Parsing Helpers ─────────────────────────────────────────────
+
+function extractFlightNumber(text: string): string | null {
+    // Common patterns: AA1234, UA 567, DL123
+    const match = text.match(/\b([A-Z]{2,3})\s?(\d{1,4})\b/);
+    return match ? `${match[1]}${match[2]}` : null;
+}
+
+function extractDate(text: string): string | null {
+    // Patterns: 15 JAN 2025, Jan 15, 2025, 01/15/2025, 2025-01-15
+    const patterns = [
+        /(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{4})/i,
+        /(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{1,2}),?\s+(\d{4})/i,
+        /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/,
+        /(\d{4})-(\d{2})-(\d{2})/,
+    ];
+    for (const p of patterns) {
+        const m = text.match(p);
+        if (m) return m[0];
+    }
+    return null;
+}
+
+function extractTime(text: string): string | null {
+    const match = text.match(/\b(\d{1,2}:\d{2})\s*(AM|PM|HRS|H)?\b/i);
+    return match ? match[0] : null;
+}
+
+function extractGate(text: string): string | null {
+    const match = text.match(/GATE\s*:?\s*([A-Z]?\d{1,3}[A-Z]?)/i);
+    return match ? match[1] : null;
+}
+
+function extractSeat(text: string): string | null {
+    const match = text.match(/SEAT\s*:?\s*(\d{1,3}[A-F])/i);
+    return match ? match[1] : null;
+}
+
+function extractAirport(text: string): string | null {
+    const match = text.match(/\b([A-Z]{3})\b/g);
+    // Filter to known airport-like codes — 3 uppercase
+    return match && match.length > 0 ? match[0] : null;
+}
+
+function extractConfirmation(text: string): string | null {
+    const match = text.match(/(?:CONF|PNR|BOOKING|REF)\s*:?\s*([A-Z0-9]{5,8})/i);
+    return match ? match[1] : null;
+}
 
 export default function ScanTicketScreen() {
     const navigation = useNavigation<any>();
@@ -16,7 +66,6 @@ export default function ScanTicketScreen() {
     const [isScanning, setIsScanning] = useState(false);
 
     if (!permission) {
-        // Camera permissions are still loading.
         return <View />;
     }
 
@@ -56,32 +105,72 @@ export default function ScanTicketScreen() {
     };
 
     const handleUsePhoto = async () => {
+        if (!photo) return;
         setIsScanning(true);
-        // Simulate OCR parsing delay
-        setTimeout(async () => {
-            setIsScanning(false);
 
+        try {
             // Save to gallery if permitted
-            if (mediaPermission?.granted && photo) {
+            if (mediaPermission?.granted) {
                 await MediaLibrary.saveToLibraryAsync(photo);
             }
 
+            // Real OCR using ML Kit
+            const result = await TextRecognition.recognize(photo);
+            const fullText = result.text || '';
+
+            // Parse ticket details
+            const flightNumber = extractFlightNumber(fullText);
+            const date = extractDate(fullText);
+            const time = extractTime(fullText);
+            const gate = extractGate(fullText);
+            const seat = extractSeat(fullText);
+            const confirmation = extractConfirmation(fullText);
+
+            setIsScanning(false);
+
+            if (flightNumber || date || confirmation) {
+                // Found useful info — navigate with pre-filled data
+                Alert.alert(
+                    "✅ Ticket Scanned!",
+                    `Found: ${[
+                        flightNumber && `Flight ${flightNumber}`,
+                        date && `Date: ${date}`,
+                        time && `Time: ${time}`,
+                        gate && `Gate: ${gate}`,
+                        seat && `Seat: ${seat}`,
+                        confirmation && `Ref: ${confirmation}`,
+                    ].filter(Boolean).join('\n')}`,
+                    [{
+                        text: "Continue",
+                        onPress: () => navigation.navigate('AddFlightTrip', {
+                            ticketImage: photo,
+                            ocrData: { flightNumber, date, time, gate, seat, confirmation },
+                        }),
+                    }]
+                );
+            } else {
+                // No useful data found
+                Alert.alert(
+                    "📷 Photo Captured",
+                    "We couldn't auto-detect flight info from this image. You can still enter details manually.",
+                    [{
+                        text: "Continue",
+                        onPress: () => navigation.navigate('AddFlightTrip', { ticketImage: photo }),
+                    }]
+                );
+            }
+        } catch (error) {
+            console.error('OCR Error:', error);
+            setIsScanning(false);
             Alert.alert(
                 "Ticket Captured!",
-                "We've scanned your ticket. Text recognition (OCR) is coming soon. For now, please enter trip details manually.",
-                [
-                    {
-                        text: "Continue to Add Trip",
-                        onPress: () => {
-                            // Navigate to AddFlightTrip (default) passing the image URI?
-                            // Or ask user if it's Flight or Bus?
-                            // Default to Flight for now as it's most common for tickets.
-                            navigation.navigate('AddFlightTrip', { ticketImage: photo });
-                        }
-                    }
-                ]
+                "OCR scanning encountered an error. Please enter trip details manually.",
+                [{
+                    text: "Continue to Add Trip",
+                    onPress: () => navigation.navigate('AddFlightTrip', { ticketImage: photo }),
+                }]
             );
-        }, 1500);
+        }
     };
 
     if (photo) {

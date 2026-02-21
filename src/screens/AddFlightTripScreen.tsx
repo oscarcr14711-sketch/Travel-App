@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing } from '../theme';
 import { createTrip } from '../services/firebase.service';
 import { scheduleAllTripNotifications } from '../services/notifications.service';
 import { CabinClass } from '../types/trip.types';
+import { lookupFlightByNumber } from '../services/aerodatabox.service';
 
 import AutocompleteInput from '../components/AutocompleteInput';
 import SmartDateInput from '../components/SmartDateInput';
@@ -13,18 +15,58 @@ import { AIRPORTS, Airport } from '../data/airports';
 import { AIRLINES, Airline } from '../data/airlines';
 
 export default function AddFlightTripScreen({ navigation, route }: any) {
-    const { country } = route.params || { country: 'USA' };
+    const { country, ocrData, ticketImage } = route.params || { country: 'USA' };
+    const scannedFromTicket = !!ocrData;
 
     const [destination, setDestination] = useState('');
     const [origin, setOrigin] = useState('');
-    const [flightNumber, setFlightNumber] = useState('');
+    const [flightNumber, setFlightNumber] = useState(ocrData?.flightNumber || '');
     const [airline, setAirline] = useState('');
     const [cabinClass, setCabinClass] = useState<CabinClass>('economy');
-    const [departureDate, setDepartureDate] = useState('');
-    const [departureTime, setDepartureTime] = useState('');
+    const [departureDate, setDepartureDate] = useState(ocrData?.date || '');
+    const [departureTime, setDepartureTime] = useState(ocrData?.time || '');
     const [arrivalDate, setArrivalDate] = useState('');
     const [arrivalTime, setArrivalTime] = useState('');
+    const [aircraftModel, setAircraftModel] = useState('');
     const [loading, setLoading] = useState(false);
+    const [lookingUp, setLookingUp] = useState(false);
+    const [autofillBanner, setAutofillBanner] = useState<string | null>(null);
+
+    // Convert MM/DD/YYYY → YYYY-MM-DD for AeroDataBox
+    const toApiDate = (mmddyyyy: string): string => {
+        const parts = mmddyyyy.split('/');
+        if (parts.length === 3) return `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+        return mmddyyyy;
+    };
+
+    const lookupFlight = async () => {
+        if (!flightNumber.trim()) {
+            Alert.alert('Enter Flight Number', 'Type your flight number first (e.g. AA123)');
+            return;
+        }
+        const dateForApi = departureDate ? toApiDate(departureDate) : new Date().toISOString().split('T')[0];
+        setLookingUp(true);
+        setAutofillBanner(null);
+        try {
+            const data = await lookupFlightByNumber(flightNumber.trim(), dateForApi);
+            if (!data) {
+                Alert.alert('Not Found', `Could not find flight ${flightNumber.toUpperCase()} on that date. Double-check the number and make sure Departure Date is set.`);
+                return;
+            }
+            // Populate all fields
+            if (data.origin) setOrigin(data.origin + (data.originIata ? ` (${data.originIata})` : ''));
+            if (data.destination) setDestination(data.destination + (data.destinationIata ? ` (${data.destinationIata})` : ''));
+            if (data.airline) setAirline(data.airline);
+            if (data.departureDate) setDepartureDate(data.departureDate);
+            if (data.departureTime) setDepartureTime(data.departureTime);
+            if (data.arrivalDate) setArrivalDate(data.arrivalDate);
+            if (data.arrivalTime) setArrivalTime(data.arrivalTime);
+            if (data.aircraftModel) setAircraftModel(data.aircraftModel);
+            setAutofillBanner(`✅ Auto-filled: ${data.airline} · ${data.originIata} → ${data.destinationIata}${data.aircraftModel ? ` · ${data.aircraftModel}` : ''}`);
+        } finally {
+            setLookingUp(false);
+        }
+    };
 
     const handleSaveTrip = async () => {
         // Validate required fields
@@ -44,6 +86,7 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
                 flightNumber,
                 airline,
                 cabinClass,
+                aircraftModel: aircraftModel || undefined,
                 departureDate,
                 departureTime,
                 arrivalDate: arrivalDate || departureDate,
@@ -104,6 +147,20 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
             >
                 {/* Form Fields */}
                 <View style={[styles.form, { zIndex: 10 }]}>
+                    {scannedFromTicket && (
+                        <View style={{ backgroundColor: '#dcfce7', borderRadius: 12, padding: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 16 }}>✅</Text>
+                            <Text style={{ color: '#166534', fontSize: 14, fontWeight: '600', flex: 1 }}>Pre-filled from scanned ticket. Review and complete the remaining fields.</Text>
+                        </View>
+                    )}
+                    {autofillBanner && (
+                        <View style={styles.autofillBanner}>
+                            <Text style={styles.autofillBannerText}>{autofillBanner}</Text>
+                            <TouchableOpacity onPress={() => setAutofillBanner(null)}>
+                                <Text style={styles.autofillBannerClose}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                     <View style={{ zIndex: 3 }}>
                         <AutocompleteInput
                             label="Origin"
@@ -148,13 +205,33 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
 
                     <View style={styles.fieldGroup}>
                         <Text style={styles.label}>Flight Number</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g., DL1234"
-                            placeholderTextColor={colors.neutral.gray400}
-                            value={flightNumber}
-                            onChangeText={setFlightNumber}
-                        />
+                        <View style={styles.flightNumberRow}>
+                            <TextInput
+                                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                                placeholder="e.g., AA123"
+                                placeholderTextColor={colors.neutral.gray400}
+                                value={flightNumber}
+                                onChangeText={(t) => { setFlightNumber(t); setAutofillBanner(null); }}
+                                autoCapitalize="characters"
+                            />
+                            <TouchableOpacity
+                                style={styles.lookupBtn}
+                                onPress={lookupFlight}
+                                disabled={lookingUp || flightNumber.trim().length < 3}
+                                activeOpacity={0.8}
+                            >
+                                <LinearGradient
+                                    colors={flightNumber.trim().length >= 3 ? ['#6366f1', '#a855f7'] : ['#374151', '#374151']}
+                                    style={styles.lookupBtnGrad}
+                                >
+                                    {lookingUp
+                                        ? <ActivityIndicator size="small" color="#fff" />
+                                        : <Text style={styles.lookupBtnText}>🔍 Look Up</Text>
+                                    }
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.lookupHint}>Enter flight number + departure date, then tap Look Up to auto-fill</Text>
                     </View>
 
                     {/* Cabin Class Selector */}

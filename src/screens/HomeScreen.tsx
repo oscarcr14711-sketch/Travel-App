@@ -1,34 +1,84 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import {
+    View, Text, StyleSheet, TouchableOpacity, Image,
+    Modal, FlatList, SafeAreaView,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import StarryBackground from '../components/StarryBackground';
-import { colors, typography, spacing } from '../theme';
-import { useTheme } from '../context/ThemeContext';
+import { spacing } from '../theme';
+
+const COUNTRIES = [
+    { flag: '🇺🇸', name: 'United States' },
+    { flag: '🇲🇽', name: 'Mexico' },
+    { flag: '🇨🇦', name: 'Canada' },
+    { flag: '🇬🇧', name: 'United Kingdom' },
+    { flag: '🇫🇷', name: 'France' },
+    { flag: '🇩🇪', name: 'Germany' },
+    { flag: '🇮🇹', name: 'Italy' },
+    { flag: '🇪🇸', name: 'Spain' },
+    { flag: '🇵🇹', name: 'Portugal' },
+    { flag: '🇳🇱', name: 'Netherlands' },
+    { flag: '🇧🇪', name: 'Belgium' },
+    { flag: '🇨🇭', name: 'Switzerland' },
+    { flag: '🇸🇪', name: 'Sweden' },
+    { flag: '🇳🇴', name: 'Norway' },
+    { flag: '🇩🇰', name: 'Denmark' },
+    { flag: '🇦🇺', name: 'Australia' },
+    { flag: '🇳🇿', name: 'New Zealand' },
+    { flag: '🇯🇵', name: 'Japan' },
+    { flag: '🇰🇷', name: 'South Korea' },
+    { flag: '🇨🇳', name: 'China' },
+    { flag: '🇮🇳', name: 'India' },
+    { flag: '🇸🇬', name: 'Singapore' },
+    { flag: '🇹🇭', name: 'Thailand' },
+    { flag: '🇦🇪', name: 'UAE' },
+    { flag: '🇧🇷', name: 'Brazil' },
+    { flag: '🇦🇷', name: 'Argentina' },
+    { flag: '🇨🇴', name: 'Colombia' },
+    { flag: '🇨🇱', name: 'Chile' },
+    { flag: '🇵🇪', name: 'Peru' },
+    { flag: '🇬🇹', name: 'Guatemala' },
+    { flag: '🇨🇷', name: 'Costa Rica' },
+    { flag: '🇵🇦', name: 'Panama' },
+    { flag: '🇿🇦', name: 'South Africa' },
+    { flag: '🇳🇬', name: 'Nigeria' },
+    { flag: '🇰🇪', name: 'Kenya' },
+    { flag: '🇲🇦', name: 'Morocco' },
+    { flag: '🇪🇬', name: 'Egypt' },
+    { flag: '🇹🇷', name: 'Turkey' },
+    { flag: '🇷🇺', name: 'Russia' },
+    { flag: '🇵🇱', name: 'Poland' },
+    { flag: '🇨🇿', name: 'Czech Republic' },
+    { flag: '🇦🇹', name: 'Austria' },
+    { flag: '🇬🇷', name: 'Greece' },
+    { flag: '🇭🇺', name: 'Hungary' },
+    { flag: '🇵🇭', name: 'Philippines' },
+    { flag: '🇮🇩', name: 'Indonesia' },
+    { flag: '🇻🇳', name: 'Vietnam' },
+    { flag: '🇲🇾', name: 'Malaysia' },
+    { flag: '🇵🇰', name: 'Pakistan' },
+    { flag: '🇸🇦', name: 'Saudi Arabia' },
+];
 
 export default function HomeScreen({ navigation }: any) {
-    const { theme } = useTheme();
+    const [selectedCountry, setSelectedCountry] = useState<typeof COUNTRIES[0] | null>(null);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
 
-    const handleCountrySelect = (country: 'USA' | 'Mexico') => {
-        console.log(`Selected country: ${country}`);
-        navigation.navigate('TransportationSelection', { country });
+    const handleContinue = () => {
+        if (!selectedCountry) return;
+        navigation.navigate('TransportationSelection', { country: selectedCountry.name });
     };
 
     return (
         <StarryBackground>
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Logo Section */}
+            <View style={styles.container}>
+                {/* Logo */}
                 <View style={styles.logoContainer}>
-                    {/* FlyRide Logo */}
                     <Image
                         source={require('../assets/images/FlyRide Logo.png')}
                         style={styles.logo}
                         resizeMode="contain"
                     />
-
-                    {/* FlyRide Title */}
                     <Image
                         source={require('../assets/images/FlyRide title.png')}
                         style={styles.title}
@@ -36,65 +86,95 @@ export default function HomeScreen({ navigation }: any) {
                     />
                 </View>
 
-                {/* Country Selection Section */}
-                <View style={styles.selectionContainer}>
-                    <Text style={[styles.instructionText, { color: theme.headerText }]}>Select Your Travel Country</Text>
+                {/* Selector */}
+                <View style={styles.selectorSection}>
+                    <Text style={styles.label}>Where are you traveling from?</Text>
 
-                    <View style={styles.buttonContainer}>
-                        {/* Mexico Button */}
-                        <TouchableOpacity
-                            style={styles.countryButton}
-                            onPress={() => handleCountrySelect('Mexico')}
-                            activeOpacity={0.8}
+                    {/* Dropdown trigger */}
+                    <TouchableOpacity
+                        style={styles.dropdownBtn}
+                        onPress={() => setDropdownOpen(true)}
+                        activeOpacity={0.85}
+                    >
+                        <LinearGradient
+                            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.08)']}
+                            style={styles.dropdownBtnInner}
                         >
-                            <LinearGradient
-                                colors={['#5dc7bf', '#4db8b0', '#3da39c']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 0, y: 1 }}
-                                style={styles.buttonGradient}
-                            >
-                                {/* Glossy highlight overlay */}
-                                <LinearGradient
-                                    colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.1)', 'transparent']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 0, y: 0.5 }}
-                                    style={styles.glossOverlay}
-                                />
-                                <View style={styles.buttonContent}>
-                                    <Text style={styles.countryFlag}>🇲🇽</Text>
-                                    <Text style={styles.countryText}>Mexico</Text>
+                            {selectedCountry ? (
+                                <View style={styles.dropdownSelected}>
+                                    <Text style={styles.dropdownFlag}>{selectedCountry.flag}</Text>
+                                    <Text style={styles.dropdownSelectedText}>{selectedCountry.name}</Text>
                                 </View>
-                            </LinearGradient>
-                        </TouchableOpacity>
+                            ) : (
+                                <Text style={styles.dropdownPlaceholder}>Select your country...</Text>
+                            )}
+                            <Text style={styles.dropdownChevron}>
+                                {dropdownOpen ? '▲' : '▼'}
+                            </Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
 
-                        {/* USA Button */}
-                        <TouchableOpacity
-                            style={styles.countryButton}
-                            onPress={() => handleCountrySelect('USA')}
-                            activeOpacity={0.8}
+                    {/* Continue button */}
+                    <TouchableOpacity
+                        style={[styles.continueBtn, !selectedCountry && styles.continueBtnDisabled]}
+                        onPress={handleContinue}
+                        activeOpacity={selectedCountry ? 0.85 : 1}
+                    >
+                        <LinearGradient
+                            colors={selectedCountry ? ['#6366f1', '#a855f7'] : ['#374151', '#374151']}
+                            style={styles.continueBtnGrad}
                         >
-                            <LinearGradient
-                                colors={['#7c6fdd', '#6b5fcc', '#5a4ebb']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 0, y: 1 }}
-                                style={styles.buttonGradient}
-                            >
-                                {/* Glossy highlight overlay */}
-                                <LinearGradient
-                                    colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.1)', 'transparent']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 0, y: 0.5 }}
-                                    style={styles.glossOverlay}
-                                />
-                                <View style={styles.buttonContent}>
-                                    <Text style={styles.countryFlag}>🇺🇸</Text>
-                                    <Text style={styles.countryText}>USA</Text>
-                                </View>
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    </View>
+                            <Text style={styles.continueBtnText}>
+                                {selectedCountry ? `Continue →` : 'Select a country first'}
+                            </Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
                 </View>
-            </ScrollView>
+            </View>
+
+            {/* Country Dropdown Modal */}
+            <Modal
+                visible={dropdownOpen}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setDropdownOpen(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setDropdownOpen(false)}
+                >
+                    <SafeAreaView style={styles.modalSheet}>
+                        <View style={styles.modalHandle} />
+                        <Text style={styles.modalTitle}>Select Country</Text>
+                        <FlatList
+                            data={COUNTRIES}
+                            keyExtractor={item => item.name}
+                            style={styles.list}
+                            showsVerticalScrollIndicator={false}
+                            renderItem={({ item }) => {
+                                const isSelected = selectedCountry?.name === item.name;
+                                return (
+                                    <TouchableOpacity
+                                        style={[styles.listItem, isSelected && styles.listItemSelected]}
+                                        onPress={() => {
+                                            setSelectedCountry(item);
+                                            setDropdownOpen(false);
+                                        }}
+                                        activeOpacity={0.75}
+                                    >
+                                        <Text style={styles.listFlag}>{item.flag}</Text>
+                                        <Text style={[styles.listName, isSelected && styles.listNameSelected]}>
+                                            {item.name}
+                                        </Text>
+                                        {isSelected && <Text style={styles.listCheck}>✓</Text>}
+                                    </TouchableOpacity>
+                                );
+                            }}
+                        />
+                    </SafeAreaView>
+                </TouchableOpacity>
+            </Modal>
         </StarryBackground>
     );
 }
@@ -102,97 +182,171 @@ export default function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    gradient: {
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        // Royal blue to lighter blue gradient
-        backgroundColor: '#1E3A8A', // Royal Blue base
-    },
-    scrollContent: {
-        flexGrow: 1,
-        minHeight: '100%',
-        justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: spacing.xl,
-        paddingBottom: 100, // Extra padding to ensure buttons are above tab bar (64px + spacing)
+        justifyContent: 'center',
         paddingHorizontal: spacing.lg,
+        paddingBottom: 80,
     },
     logoContainer: {
         alignItems: 'center',
-        marginTop: spacing.md,
-        marginBottom: spacing.xl,
+        marginBottom: 48,
         gap: spacing.lg,
     },
     logo: {
-        width: 280,
-        height: 280,
+        width: 200,
+        height: 200,
     },
     title: {
-        width: 700,
-        height: 210,
+        width: 600,
+        height: 180,
     },
-    selectionContainer: {
+    selectorSection: {
         width: '100%',
         alignItems: 'center',
-        marginTop: spacing.xl,
-        marginBottom: spacing.xl,
+        gap: 16,
     },
-    instructionText: {
-        fontSize: 22,
+    label: {
+        fontSize: 20,
         fontWeight: '700',
-        color: '#ffffff',
-        marginBottom: spacing.xl,
+        color: '#fff',
         textAlign: 'center',
+        marginBottom: 4,
     },
-    buttonContainer: {
-        flexDirection: 'row',
+    // Dropdown button
+    dropdownBtn: {
         width: '100%',
-        gap: spacing.md,
-        justifyContent: 'center',
-    },
-    countryButton: {
-        flex: 1,
-        maxWidth: 165,
-        height: 56,
-        borderRadius: 28,
+        borderRadius: 16,
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 10,
-    },
-    buttonGradient: {
-        flex: 1,
-        borderRadius: 28,
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: 'rgba(255,255,255,0.3)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
     },
-    glossOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '50%',
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-    },
-    buttonContent: {
-        flex: 1,
+    dropdownBtnInner: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: spacing.md,
-        gap: spacing.sm,
+        justifyContent: 'space-between',
+        paddingVertical: 18,
+        paddingHorizontal: 20,
     },
-    countryFlag: {
-        fontSize: 24,
+    dropdownSelected: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
     },
-    countryText: {
+    dropdownFlag: {
+        fontSize: 28,
+    },
+    dropdownSelectedText: {
+        color: '#fff',
         fontSize: 18,
         fontWeight: '700',
-        color: '#ffffff',
+    },
+    dropdownPlaceholder: {
+        color: 'rgba(255,255,255,0.45)',
+        fontSize: 16,
+        fontStyle: 'italic',
+    },
+    dropdownChevron: {
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    // Continue button
+    continueBtn: {
+        width: '100%',
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.45,
+        shadowRadius: 12,
+        elevation: 10,
+        marginTop: 8,
+    },
+    continueBtnDisabled: {
+        shadowOpacity: 0,
+        elevation: 0,
+    },
+    continueBtnGrad: {
+        paddingVertical: 18,
+        alignItems: 'center',
+        borderRadius: 16,
+    },
+    continueBtnText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: 0.3,
+    },
+    // Modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'flex-end',
+    },
+    modalSheet: {
+        backgroundColor: '#13131a',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        maxHeight: '75%',
+        paddingBottom: 20,
+        borderTopWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    modalHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignSelf: 'center',
+        marginTop: 12,
+        marginBottom: 8,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#fff',
+        textAlign: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.08)',
+        marginBottom: 4,
+    },
+    list: {
+        paddingHorizontal: 16,
+    },
+    listItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        gap: 14,
+        marginVertical: 2,
+    },
+    listItemSelected: {
+        backgroundColor: 'rgba(99,102,241,0.2)',
+    },
+    listFlag: {
+        fontSize: 28,
+    },
+    listName: {
+        flex: 1,
+        color: 'rgba(255,255,255,0.85)',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    listNameSelected: {
+        color: '#a5b4fc',
+        fontWeight: '800',
+    },
+    listCheck: {
+        color: '#a5b4fc',
+        fontSize: 16,
+        fontWeight: '900',
     },
 });

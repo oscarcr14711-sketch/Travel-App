@@ -1,8 +1,14 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFlightStatus, checkGateAssignment, checkFlightDelay, checkFlightCancellation } from './aerodatabox.service';
+
+const FLIGHT_CHECK_TASK = 'BACKGROUND_FLIGHT_STATUS_CHECK';
+const TRACKED_FLIGHTS_KEY = '@flyride_tracked_flights';
+const LAST_FLIGHT_STATUS_KEY = '@flyride_last_status';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -287,32 +293,6 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
 }
 
 /**
- * Schedule background checks for flight status updates
- * (Gate assignments, delays, cancellations)
- */
-async function scheduleFlightStatusChecks(trip: any, notificationIds: string[]) {
-    const now = new Date();
-    const departureDate = new Date(trip.departureDate);
-    const dateString = departureDate.toISOString().split('T')[0];
-
-    // Check every 30 minutes starting 3 hours before departure
-    const checkIntervals = [10800, 9000, 7200, 5400, 3600, 1800]; // 3h, 2.5h, 2h, 1.5h, 1h, 30min
-
-    for (const secondsBefore of checkIntervals) {
-        const secondsUntilCheck = (departureDate.getTime() - now.getTime()) / 1000 - secondsBefore;
-
-        if (secondsUntilCheck > 0) {
-            // We can't run background tasks with just expo-notifications
-            // This would require expo-background-fetch or expo-task-manager
-            // For now, we'll document this as a TODO
-
-            // TODO: Implement background task to check flight status
-            // For now, users can manually refresh the app to see updates
-        }
-    }
-}
-
-/**
  * Cancel all notifications for a trip
  */
 export async function cancelTripNotifications(tripId: string): Promise<void> {
@@ -324,12 +304,9 @@ export async function cancelTripNotifications(tripId: string): Promise<void> {
         const tripNotifications = allNotifications.find(n => n.tripId === tripId);
 
         if (tripNotifications) {
-            // Cancel all scheduled notifications
             for (const notifId of tripNotifications.notificationIds) {
                 await Notifications.cancelScheduledNotificationAsync(notifId);
             }
-
-            // Remove from storage
             const updated = allNotifications.filter(n => n.tripId !== tripId);
             await AsyncStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(updated));
         }
@@ -345,13 +322,8 @@ async function storeTripNotifications(tripId: string, notificationIds: string[])
     try {
         const stored = await AsyncStorage.getItem(NOTIFICATION_STORAGE_KEY);
         const allNotifications: TripNotifications[] = stored ? JSON.parse(stored) : [];
-
-        // Remove existing notifications for this trip
         const filtered = allNotifications.filter(n => n.tripId !== tripId);
-
-        // Add new notifications
         filtered.push({ tripId, notificationIds });
-
         await AsyncStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(filtered));
     } catch (error) {
         console.error('Error storing notification IDs:', error);
@@ -368,7 +340,7 @@ export async function notifyGateAssignment(trip: any, gate: string): Promise<voi
             body: `Your flight ${trip.flightNumber} to ${trip.destination} is at Gate ${gate}`,
             sound: true,
         },
-        trigger: null, // Immediate
+        trigger: null,
     });
 }
 
@@ -399,3 +371,167 @@ export async function notifyFlightCancellation(trip: any): Promise<void> {
         trigger: null,
     });
 }
+
+/**
+ * Schedule background checks for flight status updates
+ * Now uses expo-background-fetch + expo-task-manager for real background polling
+ */
+async function scheduleFlightStatusChecks(trip: any, notificationIds: string[]) {
+    // Track this flight for background monitoring
+    const tracked = await getTrackedFlights();
+    const alreadyTracked = tracked.find((f: any) => f.flightNumber === trip.flightNumber && f.departureDate === trip.departureDate);
+    if (!alreadyTracked) {
+        tracked.push({
+            flightNumber: trip.flightNumber,
+            departureDate: trip.departureDate,
+            destination: trip.destination,
+            airline: trip.airline,
+            tripId: trip.id,
+        });
+        await AsyncStorage.setItem(TRACKED_FLIGHTS_KEY, JSON.stringify(tracked));
+    }
+
+    // Ensure background task is registered
+    await registerBackgroundFlightCheck();
+}
+
+// ─── Flight Tracking Helpers ─────────────────────────────────────────
+
+async function getTrackedFlights(): Promise<any[]> {
+    try {
+        const data = await AsyncStorage.getItem(TRACKED_FLIGHTS_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch {
+        return [];
+    }
+}
+
+async function checkFlightAndNotify(flight: any): Promise<void> {
+    try {
+        const dateString = new Date(flight.departureDate).toISOString().split('T')[0];
+        const status = await getFlightStatus(flight.flightNumber, dateString);
+        if (!status) return;
+
+        const lastStatusKey = `${LAST_FLIGHT_STATUS_KEY}_${flight.flightNumber}`;
+        const lastData = await AsyncStorage.getItem(lastStatusKey);
+        const lastStatus = lastData ? JSON.parse(lastData) : null;
+
+        // Gate change
+        if (status.departure.gate && lastStatus?.gate !== status.departure.gate) {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: `🚪 Gate Change - ${flight.flightNumber}`,
+                    body: `Gate updated to ${status.departure.gate}${status.departure.terminal ? ` (Terminal ${status.departure.terminal})` : ''}`,
+                    sound: true,
+                },
+                trigger: null,
+            });
+        }
+
+        // Delay
+        if (status.delayMinutes && status.delayMinutes > 0 && lastStatus?.delayMinutes !== status.delayMinutes) {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: `⏰ Delay - ${flight.flightNumber}`,
+                    body: `Your flight is delayed by ${status.delayMinutes} minutes`,
+                    sound: true,
+                },
+                trigger: null,
+            });
+        }
+
+        // Cancellation
+        if (status.status === 'cancelled' && lastStatus?.status !== 'cancelled') {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: `❌ Cancelled - ${flight.flightNumber}`,
+                    body: `Your flight has been cancelled. Contact ${flight.airline || 'your airline'} for rebooking.`,
+                    sound: true,
+                },
+                trigger: null,
+            });
+        }
+
+        // Landed
+        if (status.status === 'landed' && lastStatus?.status !== 'landed') {
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: `🛬 ${flight.flightNumber} Landed`,
+                    body: `Welcome to ${flight.destination}! Your flight has landed.`,
+                    sound: true,
+                },
+                trigger: null,
+            });
+        }
+
+        // Save last known status
+        await AsyncStorage.setItem(lastStatusKey, JSON.stringify({
+            status: status.status,
+            gate: status.departure.gate,
+            delayMinutes: status.delayMinutes,
+            checkedAt: new Date().toISOString(),
+        }));
+    } catch (error) {
+        console.error(`Background check error for ${flight.flightNumber}:`, error);
+    }
+}
+
+// ─── Background Task Definition ──────────────────────────────────────
+
+TaskManager.defineTask(FLIGHT_CHECK_TASK, async () => {
+    try {
+        const flights = await getTrackedFlights();
+        const now = new Date();
+        const cutoff = new Date(now.getTime() + 48 * 60 * 60 * 1000); // Next 48 hours
+
+        // Only check upcoming flights
+        const relevantFlights = flights.filter((f: any) => {
+            const dep = new Date(f.departureDate);
+            return dep >= now && dep <= cutoff;
+        });
+
+        for (const flight of relevantFlights) {
+            await checkFlightAndNotify(flight);
+        }
+
+        // Clean up old flights (older than 24 hours past departure)
+        const activeFlights = flights.filter((f: any) => {
+            const dep = new Date(f.departureDate);
+            return dep >= new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        });
+        await AsyncStorage.setItem(TRACKED_FLIGHTS_KEY, JSON.stringify(activeFlights));
+
+        return BackgroundFetch.BackgroundFetchResult.NewData;
+    } catch (error) {
+        console.error('Background flight check failed:', error);
+        return BackgroundFetch.BackgroundFetchResult.Failed;
+    }
+});
+
+// ─── Register Background Task ────────────────────────────────────────
+
+export async function registerBackgroundFlightCheck(): Promise<void> {
+    try {
+        const isRegistered = await TaskManager.isTaskRegisteredAsync(FLIGHT_CHECK_TASK);
+        if (!isRegistered) {
+            await BackgroundFetch.registerTaskAsync(FLIGHT_CHECK_TASK, {
+                minimumInterval: 15 * 60, // every 15 minutes
+                stopOnTerminate: false,
+                startOnBoot: true,
+            });
+            console.log('✅ Background flight status check registered');
+        }
+    } catch (error) {
+        console.error('Failed to register background flight check:', error);
+    }
+}
+
+// ─── Initialize Notifications System ─────────────────────────────────
+
+export async function initializeNotifications(): Promise<void> {
+    const hasPermission = await requestNotificationPermissions();
+    if (hasPermission) {
+        await registerBackgroundFlightCheck();
+    }
+}
+

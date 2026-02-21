@@ -69,7 +69,15 @@
                     "savePhotosPermission": "Allow FlyRide to save photos."
                 }
             ],
-            "react-native-maps"
+            "react-native-maps",
+            [
+                "expo-build-properties",
+                {
+                    "ios": {
+                        "deploymentTarget": "16.0"
+                    }
+                }
+            ]
         ],
         "extra": {
             "eas": {

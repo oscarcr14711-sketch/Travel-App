@@ -38,6 +38,9 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
     const bus = getBusModelData(busModel);
     const amenities = getBusClassAmenities(busModel, serviceClass);
 
+    // Determine if this is a Double Decker bus (for feature filtering)
+    const isDoubleDecker = bus ? /double decker|\bDD\b/i.test(bus.variant) : false;
+
     if (!bus || !amenities) {
         return (
             <View style={styles.container}>
@@ -126,9 +129,6 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
                 {/* Bus & Service Class Info */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Bus Information</Text>
-                    <InfoRow label="Manufacturer" value={bus.manufacturer} />
-                    <InfoRow label="Model" value={bus.model} />
-                    <InfoRow label="Variant" value={bus.variant} />
                     <InfoRow label="Service Class" value={serviceClassNames[serviceClass]} />
                     {bus.commonOperators && bus.commonOperators.length > 0 && (
                         <View style={styles.operatorsSection}>
@@ -148,14 +148,25 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
                 </View>
 
                 {/* Features */}
-                {amenities.features.length > 0 && (
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>✨ Features</Text>
-                        {amenities.features.map((feature, index) => (
-                            <BulletItem key={index} text={feature} />
-                        ))}
-                    </View>
-                )}
+                {amenities.features.length > 0 && (() => {
+                    // Filter out panoramic/upper deck views and leather seats for non-DD buses
+                    const filteredFeatures = isDoubleDecker
+                        ? amenities.features
+                        : amenities.features.filter(f => {
+                            const lower = f.toLowerCase();
+                            if (lower.includes('panoramic') || lower.includes('upper deck')) return false;
+                            if (lower.includes('leather seat')) return false;
+                            return true;
+                        });
+                    return filteredFeatures.length > 0 ? (
+                        <View style={styles.card}>
+                            <Text style={styles.cardTitle}>✨ Features</Text>
+                            {filteredFeatures.map((feature, index) => (
+                                <BulletItem key={index} text={feature} />
+                            ))}
+                        </View>
+                    ) : null;
+                })()}
 
                 {/* Entertainment */}
                 {amenities.entertainment.length > 0 && (
@@ -201,14 +212,23 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
                 </View>
 
                 {/* Extras */}
-                {amenities.extras.length > 0 && (
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>🎁 Extras & Perks</Text>
-                        {amenities.extras.map((item, index) => (
-                            <BulletItem key={index} text={item} />
-                        ))}
-                    </View>
-                )}
+                {amenities.extras.length > 0 && (() => {
+                    // Only ADO Platino shows blanket & pillow
+                    const isAdoPlatino = companyName.toLowerCase().includes('ado platino');
+                    const filteredExtras = amenities.extras.filter(e => {
+                        const lower = e.toLowerCase();
+                        if (!isAdoPlatino && (lower.includes('blanket') || lower.includes('pillow'))) return false;
+                        return true;
+                    });
+                    return filteredExtras.length > 0 ? (
+                        <View style={styles.card}>
+                            <Text style={styles.cardTitle}>🎁 Extras & Perks</Text>
+                            {filteredExtras.map((item, index) => (
+                                <BulletItem key={index} text={item} />
+                            ))}
+                        </View>
+                    ) : null;
+                })()}
 
                 {/* Photo Gallery - Dynamic for any bus model */}
                 {shouldShowPhotos && (

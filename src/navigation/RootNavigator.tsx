@@ -14,7 +14,13 @@ import PhotoJournalScreen from '../screens/PhotoJournalScreen';
 import TSASearchScreen from '../screens/TSASearchScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AirportMapsScreen from '../screens/AirportMapsScreen';
+import BusTerminalMapsScreen from '../screens/BusTerminalMapsScreen';
 import ScanTicketScreen from '../screens/ScanTicketScreen';
+import PackingListScreen from '../screens/PackingListScreen';
+import DocumentVaultScreen from '../screens/DocumentVaultScreen';
+import CurrencyConverterScreen from '../screens/CurrencyConverterScreen';
+import PdfViewerScreen from '../screens/PdfViewerScreen';
+import BoardingPassScreen from '../screens/BoardingPassScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -76,8 +82,34 @@ export default function RootNavigator() {
                     component={AirportMapsScreen}
                 />
                 <Stack.Screen
+                    name="BusTerminalMaps"
+                    component={BusTerminalMapsScreen}
+                />
+                <Stack.Screen
                     name="ScanTicket"
                     component={ScanTicketScreen}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="PackingList"
+                    component={PackingListScreen}
+                />
+                <Stack.Screen
+                    name="DocumentVault"
+                    component={DocumentVaultScreen}
+                />
+                <Stack.Screen
+                    name="CurrencyConverter"
+                    component={CurrencyConverterScreen}
+                />
+                <Stack.Screen
+                    name="PdfViewer"
+                    component={PdfViewerScreen}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="BoardingPass"
+                    component={BoardingPassScreen}
                     options={{ headerShown: false }}
                 />
             </Stack.Navigator>
