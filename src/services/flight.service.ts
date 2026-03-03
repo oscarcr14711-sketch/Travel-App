@@ -3,8 +3,10 @@
  * Uses AeroDataBox API via RapidAPI for real-time flight information
  */
 
-const RAPIDAPI_KEY = '1ac2ba1aecmsh4f72a9a407cf71dp176733jsne9ac0ba3ad9c';
-const RAPIDAPI_HOST = 'aerodatabox.p.rapidapi.com';
+// The URL of our new Vercel backend
+// Replace this with your actual deployed Vercel URL once you deploy it
+// Or set EXPO_PUBLIC_FLIGHT_API_URL in your app code / .env file
+const BACKEND_API_URL = process.env.EXPO_PUBLIC_FLIGHT_API_URL || 'http://localhost:3000/api';
 
 export interface FlightData {
     flightNumber: string;
@@ -90,13 +92,9 @@ export async function getFlightData(flightNumber: string, date: string): Promise
         console.log(`Fetching flight data for ${normalizedFlight} on ${formattedDate}`);
 
         const response = await fetch(
-            `https://aerodatabox.p.rapidapi.com/flights/number/${normalizedFlight}/${formattedDate}`,
+            `${BACKEND_API_URL}/flight?flightNumber=${normalizedFlight}&date=${formattedDate}`,
             {
                 method: 'GET',
-                headers: {
-                    'X-RapidAPI-Key': RAPIDAPI_KEY,
-                    'X-RapidAPI-Host': RAPIDAPI_HOST,
-                },
             }
         );
 
