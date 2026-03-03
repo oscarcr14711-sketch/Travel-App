@@ -6,7 +6,7 @@
 // The URL of our new Vercel backend
 // Replace this with your actual deployed Vercel URL once you deploy it
 // Or set EXPO_PUBLIC_FLIGHT_API_URL in your app code / .env file
-const BACKEND_API_URL = process.env.EXPO_PUBLIC_FLIGHT_API_URL || 'http://localhost:3000/api';
+const BACKEND_API_URL = process.env.EXPO_PUBLIC_FLIGHT_API_URL || 'https://travel-app-oscarcr14711-sketchs-projects.vercel.app/api';
 
 export interface FlightData {
     flightNumber: string;

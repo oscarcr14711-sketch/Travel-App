@@ -4,18 +4,14 @@ We have set up a Serverless Edge Function to securely handle real-time flight re
 
 ## 1. Deploying to Vercel (Free)
 
-The easiest way to host this function is on Vercel:
+The easiest way to host this function is by linking it to your GitHub repository:
 
-1. Create a free account at [Vercel](https://vercel.com/signup).
-2. Install the Vercel CLI on your computer if you haven't already:
-   ```bash
-   npm i -g vercel
-   ```
-3. Open your terminal, navigate to this project folder, and run:
-   ```bash
-   vercel
-   ```
-4. Follow the prompts (say `yes` to default settings). Vercel will automatically detect the `api/flight.ts` file and deploy it as a serverless function.
+1. Go to your [Vercel Dashboard](https://vercel.com/dashboard).
+2. Click **"Add New..."** -> **"Project"**.
+3. Under "Import Git Repository", find your **Travel-App** repository and click **Import**.
+4. Leave all the default settings (Framework Preset: Other) and click **Deploy**.
+
+Vercel will immediately detect the `api/flight.ts` file you just pushed to GitHub and automatically deploy it!
 
 ## 2. Setup Your Secret API Key
 
