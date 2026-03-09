@@ -1,5 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { Trip, CreateTripInput } from '../types/trip.types';
+
+// Initialize Firebase for Cloud Functions
+const firebaseConfig = {
+    projectId: 'flyride-c9346',
+    // We only need projectId right now to call unauthenticated Cloud Functions.
+    // When Firestore/Auth is added, the rest of the config goes here.
+};
+
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+export default app;
 
 const TRIPS_STORAGE_KEY = '@flyride_trips';
 const MOCK_USER_ID = 'user_001';
@@ -129,13 +141,13 @@ export const deleteTrip = async (tripId: string): Promise<void> => {
 };
 
 /**
- * Initialize Firebase (placeholder for future Firebase integration)
+ * Initialize Firebase Storage Mock
  */
 export const initializeFirebase = async () => {
     console.log('Storage initialized with AsyncStorage');
 };
 
-export default {
+export const tripService = {
     initialize: initializeFirebase,
     createTrip,
     getUserTrips,

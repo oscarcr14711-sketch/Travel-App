@@ -123,7 +123,7 @@ export default function TripsScreen({ navigation, route }: any) {
                 {/* Floating Add Button */}
                 <TouchableOpacity
                     style={styles.addButtonContainer}
-                    onPress={() => navigation.navigate('TransportationSelection', { country: 'USA' })}
+                    onPress={() => navigation.navigate('Home')}
                     activeOpacity={0.8}
                 >
                     <LinearGradient

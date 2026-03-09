@@ -63,6 +63,14 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
             if (data.arrivalTime) setArrivalTime(data.arrivalTime);
             if (data.aircraftModel) setAircraftModel(data.aircraftModel);
             setAutofillBanner(`✅ Auto-filled: ${data.airline} · ${data.originIata} → ${data.destinationIata}${data.aircraftModel ? ` · ${data.aircraftModel}` : ''}`);
+        } catch (err: any) {
+            if (err.message === 'API_RATELIMIT_EXCEEDED') {
+                Alert.alert('API Quota Exceeded 🚫', 'The free tier limit for auto-filling flights has been reached for today.\n\nPlease enter your flight details manually.');
+            } else if (err.message === 'API_FORBIDDEN') {
+                Alert.alert('API Subscription Required 🔑', 'You need to subscribe to the AeroDataBox API on RapidAPI (there is a free tier available) to use this feature.');
+            } else {
+                Alert.alert('Error', 'An error occurred while looking up the flight. Please try and enter your details manually.');
+            }
         } finally {
             setLookingUp(false);
         }
@@ -79,7 +87,7 @@ export default function AddFlightTripScreen({ navigation, route }: any) {
             setLoading(true);
 
             const tripData = {
-                type: 'flight',
+                type: 'flight' as const,
                 country,
                 origin,
                 destination,
@@ -499,5 +507,63 @@ const styles = StyleSheet.create({
         color: '#9ca3af',
         marginTop: 8,
         fontStyle: 'italic',
+    },
+    // Autofill Banner
+    autofillBanner: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        justifyContent: 'space-between' as const,
+        backgroundColor: '#d1fae5',
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderWidth: 1,
+        borderColor: '#6ee7b7',
+    },
+    autofillBannerText: {
+        color: '#065f46',
+        fontSize: 13,
+        fontWeight: '600' as const,
+        flex: 1,
+        flexWrap: 'wrap' as const,
+    },
+    autofillBannerClose: {
+        color: '#065f46',
+        fontSize: 18,
+        fontWeight: '800' as const,
+        marginLeft: 8,
+    },
+    // Lookup row
+    flightNumberRow: {
+        flexDirection: 'row' as const,
+        gap: spacing.md,
+        alignItems: 'center' as const,
+    },
+    lookupBtn: {
+        borderRadius: 12,
+        overflow: 'hidden' as const,
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    lookupBtnGrad: {
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+        borderRadius: 12,
+    },
+    lookupBtnText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700' as const,
+    },
+    lookupHint: {
+        fontSize: 12,
+        color: '#9ca3af',
+        marginTop: 4,
+        fontStyle: 'italic' as const,
     },
 });

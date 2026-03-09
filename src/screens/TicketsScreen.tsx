@@ -340,6 +340,17 @@ export default function TicketsScreen({ navigation }: any) {
                             <Text style={styles.confirmValue}>{ticket.confirmationCode}</Text>
                         </View>
                     )}
+                    {/* PDF Preview Strip */}
+                    <View style={styles.pdfStrip}>
+                        <View style={styles.pdfIconWrap}>
+                            <Text style={styles.pdfIconText}>PDF</Text>
+                        </View>
+                        <View style={styles.pdfInfo}>
+                            <Text style={styles.pdfName} numberOfLines={1}>{ticket.title}</Text>
+                            <Text style={styles.pdfHint}>Tap to open document</Text>
+                        </View>
+                        <Text style={styles.pdfChevron}>›</Text>
+                    </View>
                 </LinearGradient>
             </TouchableOpacity>
         );
@@ -637,7 +648,7 @@ const styles = StyleSheet.create({
     header: {
         paddingTop: Platform.OS === 'ios' ? 60 : 40,
         paddingHorizontal: 20,
-        paddingBottom: 18,
+        paddingBottom: 12,
     },
     title: {
         fontSize: 28,
@@ -655,12 +666,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
+        flexGrow: 0,
+        flexShrink: 0,
     },
     tabRow: {
         flexDirection: 'row',
         paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingVertical: 8,
         gap: 8,
+        alignItems: 'center',
     },
     tab: {
         flexDirection: 'row',
@@ -681,8 +695,8 @@ const styles = StyleSheet.create({
 
     // Content
     content: { flex: 1 },
-    contentInner: { padding: 16 },
-    centerContainer: { paddingTop: 60, alignItems: 'center' },
+    contentInner: { padding: 12, paddingTop: 4 },
+    centerContainer: { paddingTop: 40, alignItems: 'center' },
 
     // Empty State
     emptyState: {
@@ -706,14 +720,63 @@ const styles = StyleSheet.create({
     cardOuter: { marginBottom: 16 },
     boardingPass: {
         borderRadius: 18,
-        padding: 18,
+        paddingTop: 18,
+        paddingHorizontal: 18,
+        paddingBottom: 0,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 6,
+        overflow: 'hidden',
     },
     pastCard: { opacity: 0.65 },
+
+    // PDF Preview Strip
+    pdfStrip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        borderBottomLeftRadius: 18,
+        borderBottomRightRadius: 18,
+        marginTop: 14,
+        marginHorizontal: -18,
+        paddingHorizontal: 14,
+        paddingVertical: 11,
+        gap: 12,
+    },
+    pdfIconWrap: {
+        width: 38,
+        height: 38,
+        borderRadius: 8,
+        backgroundColor: '#ef4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    pdfIconText: {
+        color: '#fff',
+        fontWeight: '900',
+        fontSize: 11,
+        letterSpacing: 0.5,
+    },
+    pdfInfo: {
+        flex: 1,
+    },
+    pdfName: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1a1a2e',
+    },
+    pdfHint: {
+        fontSize: 11,
+        color: '#888',
+        marginTop: 1,
+    },
+    pdfChevron: {
+        fontSize: 22,
+        color: '#aaa',
+        fontWeight: '300',
+    },
 
     // Card Top
     cardTopRow: {

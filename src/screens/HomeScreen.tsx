@@ -1,67 +1,20 @@
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, Image,
-    Modal, FlatList, SafeAreaView,
+    Modal, FlatList, SafeAreaView, LayoutAnimation, Platform, UIManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import StarryBackground from '../components/StarryBackground';
 import { spacing } from '../theme';
+import { COUNTRIES, CountryData } from '../data/countries';
+import { Ionicons } from '@expo/vector-icons';
 
-const COUNTRIES = [
-    { flag: '🇺🇸', name: 'United States' },
-    { flag: '🇲🇽', name: 'Mexico' },
-    { flag: '🇨🇦', name: 'Canada' },
-    { flag: '🇬🇧', name: 'United Kingdom' },
-    { flag: '🇫🇷', name: 'France' },
-    { flag: '🇩🇪', name: 'Germany' },
-    { flag: '🇮🇹', name: 'Italy' },
-    { flag: '🇪🇸', name: 'Spain' },
-    { flag: '🇵🇹', name: 'Portugal' },
-    { flag: '🇳🇱', name: 'Netherlands' },
-    { flag: '🇧🇪', name: 'Belgium' },
-    { flag: '🇨🇭', name: 'Switzerland' },
-    { flag: '🇸🇪', name: 'Sweden' },
-    { flag: '🇳🇴', name: 'Norway' },
-    { flag: '🇩🇰', name: 'Denmark' },
-    { flag: '🇦🇺', name: 'Australia' },
-    { flag: '🇳🇿', name: 'New Zealand' },
-    { flag: '🇯🇵', name: 'Japan' },
-    { flag: '🇰🇷', name: 'South Korea' },
-    { flag: '🇨🇳', name: 'China' },
-    { flag: '🇮🇳', name: 'India' },
-    { flag: '🇸🇬', name: 'Singapore' },
-    { flag: '🇹🇭', name: 'Thailand' },
-    { flag: '🇦🇪', name: 'UAE' },
-    { flag: '🇧🇷', name: 'Brazil' },
-    { flag: '🇦🇷', name: 'Argentina' },
-    { flag: '🇨🇴', name: 'Colombia' },
-    { flag: '🇨🇱', name: 'Chile' },
-    { flag: '🇵🇪', name: 'Peru' },
-    { flag: '🇬🇹', name: 'Guatemala' },
-    { flag: '🇨🇷', name: 'Costa Rica' },
-    { flag: '🇵🇦', name: 'Panama' },
-    { flag: '🇿🇦', name: 'South Africa' },
-    { flag: '🇳🇬', name: 'Nigeria' },
-    { flag: '🇰🇪', name: 'Kenya' },
-    { flag: '🇲🇦', name: 'Morocco' },
-    { flag: '🇪🇬', name: 'Egypt' },
-    { flag: '🇹🇷', name: 'Turkey' },
-    { flag: '🇷🇺', name: 'Russia' },
-    { flag: '🇵🇱', name: 'Poland' },
-    { flag: '🇨🇿', name: 'Czech Republic' },
-    { flag: '🇦🇹', name: 'Austria' },
-    { flag: '🇬🇷', name: 'Greece' },
-    { flag: '🇭🇺', name: 'Hungary' },
-    { flag: '🇵🇭', name: 'Philippines' },
-    { flag: '🇮🇩', name: 'Indonesia' },
-    { flag: '🇻🇳', name: 'Vietnam' },
-    { flag: '🇲🇾', name: 'Malaysia' },
-    { flag: '🇵🇰', name: 'Pakistan' },
-    { flag: '🇸🇦', name: 'Saudi Arabia' },
-];
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function HomeScreen({ navigation }: any) {
-    const [selectedCountry, setSelectedCountry] = useState<typeof COUNTRIES[0] | null>(null);
+    const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
 
     const handleContinue = () => {
@@ -114,6 +67,56 @@ export default function HomeScreen({ navigation }: any) {
                         </LinearGradient>
                     </TouchableOpacity>
 
+                    {/* Country Dashboard */}
+                    {selectedCountry && (
+                        <View style={styles.dashboardContainer}>
+                            <View style={styles.dashboardRow}>
+                                {/* Currency & Language Widget */}
+                                <LinearGradient
+                                    colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
+                                    style={styles.widgetCard}
+                                >
+                                    <View style={styles.widgetHeader}>
+                                        <Ionicons name="wallet-outline" size={20} color="#a855f7" />
+                                        <Text style={styles.widgetTitle}>Currency</Text>
+                                    </View>
+                                    <Text style={styles.widgetValue}>
+                                        {selectedCountry.currency.code} ({selectedCountry.currency.symbol})
+                                    </Text>
+
+                                    <View style={[styles.widgetHeader, { marginTop: 12 }]}>
+                                        <Ionicons name="chatbubble-ellipses-outline" size={20} color="#6366f1" />
+                                        <Text style={styles.widgetTitle}>Language</Text>
+                                    </View>
+                                    <Text style={styles.widgetValue}>{selectedCountry.language}</Text>
+                                </LinearGradient>
+
+                                {/* Emergency Info Widget */}
+                                <LinearGradient
+                                    colors={['rgba(239,68,68,0.15)', 'rgba(239,68,68,0.05)']}
+                                    style={styles.widgetCard}
+                                >
+                                    <View style={styles.widgetHeader}>
+                                        <Ionicons name="warning-outline" size={20} color="#ef4444" />
+                                        <Text style={styles.widgetTitle}>Emergency</Text>
+                                    </View>
+                                    <View style={styles.emergencyRow}>
+                                        <Text style={styles.emergencyLabel}>Police:</Text>
+                                        <Text style={styles.emergencyValue}>{selectedCountry.emergency.police}</Text>
+                                    </View>
+                                    <View style={styles.emergencyRow}>
+                                        <Text style={styles.emergencyLabel}>Medical:</Text>
+                                        <Text style={styles.emergencyValue}>{selectedCountry.emergency.medical}</Text>
+                                    </View>
+                                    <View style={styles.emergencyRow}>
+                                        <Text style={styles.emergencyLabel}>Fire:</Text>
+                                        <Text style={styles.emergencyValue}>{selectedCountry.emergency.fire}</Text>
+                                    </View>
+                                </LinearGradient>
+                            </View>
+                        </View>
+                    )}
+
                     {/* Continue button */}
                     <TouchableOpacity
                         style={[styles.continueBtn, !selectedCountry && styles.continueBtnDisabled]}
@@ -158,6 +161,7 @@ export default function HomeScreen({ navigation }: any) {
                                     <TouchableOpacity
                                         style={[styles.listItem, isSelected && styles.listItemSelected]}
                                         onPress={() => {
+                                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                                             setSelectedCountry(item);
                                             setDropdownOpen(false);
                                         }}
@@ -254,6 +258,57 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.6)',
         fontSize: 13,
         fontWeight: '700',
+    },
+    // Dashboard
+    dashboardContainer: {
+        width: '100%',
+        marginTop: 4,
+    },
+    dashboardRow: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    widgetCard: {
+        flex: 1,
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+        minHeight: 120,
+    },
+    widgetHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 6,
+    },
+    widgetTitle: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    widgetValue: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+        letterSpacing: 0.3,
+    },
+    emergencyRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 6,
+    },
+    emergencyLabel: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    emergencyValue: {
+        color: '#ef4444',
+        fontSize: 15,
+        fontWeight: '800',
     },
     // Continue button
     continueBtn: {
