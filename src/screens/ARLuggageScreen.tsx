@@ -6,9 +6,11 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors } from '../theme';
 import { LuggageModel, LUGGAGE_DATABASE, searchLuggage, getLuggageByType } from '../data/luggage-database';
-import { PackingItem, PACKING_ITEMS, getItemsByCategory, calculatePackingWeight } from '../data/packing-items.data';
+import { PACKING_ITEMS, getItemsByCategory, calculatePackingWeight } from '../data/packing-items.data';
+import { PackingItem } from '../types/packing.types';
+import DraggableRectangle from '../components/DraggableRectangle';
 
-type ScreenMode = 'luggage-selection' | 'packing-list' | 'camera' | 'results';
+type ScreenMode = 'luggage-selection' | 'packing-list' | 'camera' | 'measure' | 'results';
 
 interface SelectedPackingItem {
     item: PackingItem;
@@ -26,6 +28,11 @@ export default function ARLuggageScreen({ navigation }: any) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [measuredStats, setMeasuredStats] = useState<{ height: number, width: number, depth: number, emptyWeight: number } | null>(null);
+
+    // Dimension states for the draggable rectangles
+    const [idCardDim, setIdCardDim] = useState({ w: 200, h: 126 });
+    const [suitcaseDim, setSuitcaseDim] = useState({ w: 300, h: 500 });
 
     // Luggage Selection Screen
     const renderLuggageSelection = () => {
@@ -251,10 +258,12 @@ export default function ARLuggageScreen({ navigation }: any) {
             try {
                 const photo = await cameraRef.current.takePictureAsync();
                 setImage(photo?.uri || null);
-                setMode('results');
+                
+                // Immediately go to measure mode for 2D reference scaling
+                setMode('measure');
+                setAnalyzing(false);
             } catch (error) {
                 Alert.alert("Error", "Failed to take photo");
-            } finally {
                 setAnalyzing(false);
             }
         }
@@ -303,13 +312,20 @@ export default function ARLuggageScreen({ navigation }: any) {
                         </View>
 
                         <View style={styles.controls}>
-                            <TouchableOpacity
-                                style={styles.captureButton}
-                                onPress={takePicture}
-                                disabled={analyzing}
-                            >
-                                <View style={styles.captureInner} />
-                            </TouchableOpacity>
+                            {analyzing ? (
+                                <View style={styles.analyzingOverlay}>
+                                    <Text style={styles.analyzingText}>Measuring dimensions & weight...</Text>
+                                    <Text style={styles.analyzingSubText}>Please hold still</Text>
+                                </View>
+                            ) : (
+                                <TouchableOpacity
+                                    style={styles.captureButton}
+                                    onPress={takePicture}
+                                    disabled={analyzing}
+                                >
+                                    <View style={styles.captureInner} />
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </SafeAreaView>
                 </CameraView>
@@ -317,10 +333,83 @@ export default function ARLuggageScreen({ navigation }: any) {
         );
     };
 
+    const renderMeasure = () => {
+        return (
+            <View style={styles.container}>
+                <Image source={{ uri: image || '' }} style={styles.previewImageFullscreen} resizeMode="cover" />
+                
+                <View style={styles.overlayTextContainer}>
+                    <Text style={styles.overlayInstructionText}>Align rectangles to reference ID Card and Suitcase</Text>
+                </View>
+
+                {/* Draggable Rectangles */}
+                <DraggableRectangle
+                    initialX={20}
+                    initialY={150}
+                    initialWidth={idCardDim.w}
+                    initialHeight={idCardDim.h}
+                    color="#e74c3c"
+                    label="ID Card (8.56cm)"
+                    onChange={(w, h) => setIdCardDim({ w, h })}
+                />
+
+                <DraggableRectangle
+                    initialX={20}
+                    initialY={350}
+                    initialWidth={suitcaseDim.w}
+                    initialHeight={suitcaseDim.h}
+                    color="#3498db"
+                    label="Suitcase"
+                    onChange={(w, h) => setSuitcaseDim({ w, h })}
+                />
+
+                <View style={styles.measureControls}>
+                    <TouchableOpacity
+                        style={styles.retakeButton}
+                        onPress={() => {
+                            setImage(null);
+                            setMode('camera');
+                        }}
+                    >
+                        <Text style={styles.retakeButtonText}>Retake Photo</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.calculateButton}
+                        onPress={() => {
+                            // Standard ID Card width is 8.56 cm
+                            const pxPerCm = idCardDim.w / 8.56;
+                            
+                            // Calculate suitcase dims in cm
+                            const widthCm = suitcaseDim.w / pxPerCm;
+                            const heightCm = suitcaseDim.h / pxPerCm;
+                            
+                            // Convert to inches
+                            const widthIn = widthCm / 2.54;
+                            const heightIn = heightCm / 2.54;
+                            const depthIn = widthIn * 0.6; // Estimate depth
+                            
+                            setMeasuredStats({
+                                height: +heightIn.toFixed(1),
+                                width: +widthIn.toFixed(1),
+                                depth: +depthIn.toFixed(1),
+                                emptyWeight: selectedLuggage?.emptyWeight.lbs || 7.5
+                            });
+                            
+                            setMode('results');
+                        }}
+                    >
+                        <Text style={styles.calculateButtonText}>Calculate</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    };
+
     // Results Screen
     const renderResults = () => {
         const totalPackingWeight = calculatePackingWeight(packingItems);
-        const emptyWeight = selectedLuggage?.emptyWeight.lbs || 0;
+        const emptyWeight = measuredStats?.emptyWeight || selectedLuggage?.emptyWeight.lbs || 0;
         const totalWeight = emptyWeight + totalPackingWeight;
         const isCarryOn = selectedLuggage?.type === 'carry-on';
         const maxCarryOnWeight = 40; // Most airlines limit carry-on to 40 lbs
@@ -364,7 +453,7 @@ export default function ARLuggageScreen({ navigation }: any) {
                             <View style={styles.dimensionsContainer}>
                                 <Text style={styles.dimensionsLabel}>Dimensions:</Text>
                                 <Text style={styles.dimensionsText}>
-                                    {selectedLuggage?.dimensions.height}" × {selectedLuggage?.dimensions.width}" × {selectedLuggage?.dimensions.depth}"
+                                    {measuredStats?.height || selectedLuggage?.dimensions.height}" × {measuredStats?.width || selectedLuggage?.dimensions.width}" × {measuredStats?.depth || selectedLuggage?.dimensions.depth}"
                                 </Text>
                             </View>
 
@@ -409,6 +498,8 @@ export default function ARLuggageScreen({ navigation }: any) {
             return renderPackingList();
         case 'camera':
             return renderCamera();
+        case 'measure':
+            return renderMeasure();
         case 'results':
             return renderResults();
         default:
@@ -778,8 +869,78 @@ const styles = StyleSheet.create({
         borderRadius: 30,
         backgroundColor: '#fff',
     },
+    analyzingOverlay: {
+        alignItems: 'center',
+        padding: 15,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 12,
+    },
+    analyzingText: {
+        color: '#2ecc71',
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    analyzingSubText: {
+        color: '#fff',
+        fontSize: 12,
+        marginTop: 4,
+        textAlign: 'center',
+    },
     previewImage: {
         flex: 1,
+    },
+    previewImageFullscreen: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    overlayTextContainer: {
+        position: 'absolute',
+        top: 60,
+        left: 20,
+        right: 20,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    overlayInstructionText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+        textAlign: 'center',
+    },
+    measureControls: {
+        position: 'absolute',
+        bottom: 40,
+        left: 20,
+        right: 20,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 16,
+    },
+    retakeButton: {
+        flex: 1,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    retakeButtonText: {
+        color: '#333',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    calculateButton: {
+        flex: 1,
+        backgroundColor: colors.primary.main,
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    calculateButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,

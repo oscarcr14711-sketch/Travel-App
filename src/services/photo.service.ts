@@ -29,12 +29,12 @@ export async function savePhoto(photo: Omit<PhotoEntry, 'id'>): Promise<PhotoEnt
 
     // Copy image to app document directory for persistence
     const fileName = `photo_${newPhoto.id}.jpg`;
-    const destUri = `${FileSystem.documentDirectory}photos/${fileName}`;
+    const destUri = `${FileSystem.documentDirectory}FlyRide_Photos/${fileName}`;
 
     // Ensure photos directory exists
-    const dirInfo = await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}photos/`);
+    const dirInfo = await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}FlyRide_Photos/`);
     if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}photos/`, { intermediates: true });
+        await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}FlyRide_Photos/`, { intermediates: true });
     }
 
     await FileSystem.copyAsync({ from: photo.uri, to: destUri });

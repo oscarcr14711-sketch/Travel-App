@@ -119,7 +119,7 @@ export async function convert(
         const cacheKey = `${from}_${to}`;
 
         if (cached && cached.rates[cacheKey]) {
-            const cachedRate$ = cached.rates[cacheKey];
+            const cachedRate = cached.rates[cacheKey];
             return {
                 converted: amount * cachedRate.rate,
                 rate: cachedRate.rate,

@@ -950,7 +950,7 @@ export default function TripDetailScreen({ route, navigation }: any) {
                                         ]}
                                         onPress={() => setSelectedCategory(cat.id)}
                                     >
-                                        <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                                        <Text style={styles.modalCategoryIcon}>{cat.icon}</Text>
                                         <Text style={styles.categoryLabel}>{cat.label.split(' &')[0]}</Text>
                                     </TouchableOpacity>
                                 ))}
@@ -1982,7 +1982,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderWidth: 3,
     },
-    categoryIcon: {
+    modalCategoryIcon: {
         fontSize: 28,
         marginBottom: 4,
     },

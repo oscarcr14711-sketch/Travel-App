@@ -1,0 +1,41 @@
+﻿functions/src/index.ts(1,28): error TS2307: Cannot find module 'firebase-functions' or its corresponding type declarations.
+functions/src/index.ts(2,19): error TS7016: Could not find a declaration file for module 'node-fetch'. 'C:/Users/oscar/OneDrive/Escritorio/Flyride/Travel-App/node_modules/node-fetch/lib/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/node-fetch` if it exists or add a new declaration (.d.ts) file containing `declare module 'node-fetch';`
+functions/src/index.ts(46,53): error TS7006: Parameter 'context' implicitly has an 'any' type.
+src/screens/AddBusTripScreen.tsx(57,46): error TS2345: Argument of type '{ type: string; country: any; origin: string; destination: string; busNumber: string; busCompany: string; busModel: string | undefined; busServiceClass: BusServiceClass | undefined; ... 5 more ...; arrivalTime: string; }' is not assignable to parameter of type 'CreateTripInput'.
+  Types of property 'type' are incompatible.
+    Type 'string' is not assignable to type '"bus" | "flight"'.
+src/screens/ARLuggageScreen.tsx(9,10): error TS2724: '"../data/packing-items.data"' has no exported member named 'PackingItem'. Did you mean 'PACKING_ITEMS'?
+src/screens/TripDetailScreen.tsx(1985,5): error TS1117: An object literal cannot have multiple properties with the same name.
+src/services/currency.service.ts(124,37): error TS2552: Cannot find name 'cachedRate'. Did you mean 'cachedRate$'?
+src/services/currency.service.ts(125,23): error TS2552: Cannot find name 'cachedRate'. Did you mean 'cachedRate$'?
+src/services/notifications.service.ts(87,13): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(99,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(112,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(125,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(138,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(151,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(164,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(177,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(190,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(203,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(216,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(229,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(244,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(261,21): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.
+src/services/notifications.service.ts(275,17): error TS2322: Type '{ seconds: number; }' is not assignable to type 'NotificationTriggerInput'.
+  Property 'type' is missing in type '{ seconds: number; }' but required in type 'TimeIntervalTriggerInput'.

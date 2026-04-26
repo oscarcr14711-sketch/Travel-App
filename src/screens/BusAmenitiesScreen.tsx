@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme';
 import { BusServiceClass } from '../types/trip.types';
 import { getBusModelData, getBusClassAmenities, BusClassAmenities } from '../data/bus-models.data';
 import { getCompanyModels } from '../data/company-fleet-mapping';
 import { normalizeModelName } from '../data/model-aliases';
-import { getBusPhotos } from '../data/bus-photos';
 
 interface RouteParams {
     trip: any;
@@ -14,9 +14,6 @@ interface RouteParams {
 
 export default function BusAmenitiesScreen({ route, navigation }: any) {
     const { trip } = route.params as RouteParams;
-
-    // State for fullscreen image modal
-    const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
     // State for selected bus model tab
     const [selectedModelIndex, setSelectedModelIndex] = useState(0);
@@ -48,12 +45,6 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
             </View>
         );
     }
-
-    // Get photos for this bus model (if available)
-    const busPhotoSet = getBusPhotos(busModel);
-    const shouldShowPhotos = !!busPhotoSet;
-    const photos = busPhotoSet?.photos || [];
-    const photoCredits = busPhotoSet?.credits || '';
 
     const serviceClassNames: Record<BusServiceClass, string> = {
         'economy': 'Economy Class',
@@ -230,75 +221,8 @@ export default function BusAmenitiesScreen({ route, navigation }: any) {
                     ) : null;
                 })()}
 
-                {/* Photo Gallery - Dynamic for any bus model */}
-                {shouldShowPhotos && (
-                    <View style={styles.photoGallerySection}>
-                        <Text style={styles.galleryTitle}>📸 Interior Photos</Text>
-                        <Text style={styles.gallerySubtitle}>{displayModelName}</Text>
-
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            style={styles.photoGallery}
-                            contentContainerStyle={styles.photoGalleryContent}
-                        >
-                            {photos.map((photo, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={styles.photoFrame}
-                                    onPress={() => setSelectedImageIndex(index)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Image
-                                        source={photo}
-                                        style={styles.photo}
-                                        resizeMode="cover"
-                                    />
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-
-                        {/* Photo Credits */}
-                        {photoCredits && (
-                            <Text style={styles.photoCredits}>{photoCredits}</Text>
-                        )}
-                    </View>
-                )}
-
                 <View style={{ height: 40 }} />
             </ScrollView>
-
-            {/* Fullscreen Image Modal with Zoom */}
-            <Modal
-                visible={selectedImageIndex !== null}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setSelectedImageIndex(null)}
-            >
-                <View style={styles.modalContainer}>
-                    <ScrollView
-                        contentContainerStyle={styles.zoomContainer}
-                        maximumZoomScale={3}
-                        minimumZoomScale={1}
-                        showsHorizontalScrollIndicator={false}
-                        showsVerticalScrollIndicator={false}
-                    >
-                        {selectedImageIndex !== null && photos[selectedImageIndex] && (
-                            <Image
-                                source={photos[selectedImageIndex]}
-                                style={styles.fullscreenImage}
-                                resizeMode="contain"
-                            />
-                        )}
-                    </ScrollView>
-                    <TouchableOpacity
-                        style={styles.closeButton}
-                        onPress={() => setSelectedImageIndex(null)}
-                    >
-                        <Text style={styles.closeButtonText}>✕ Close</Text>
-                    </TouchableOpacity>
-                </View>
-            </Modal>
         </View>
     );
 }
@@ -310,9 +234,33 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
     </View>
 );
 
+const getIconForFeature = (text: string) => {
+    const lower = text.toLowerCase();
+    if (lower.includes('wifi') || lower.includes('wi-fi')) return 'wifi';
+    if (lower.includes('ac') || lower.includes('air conditioning') || lower.includes('climate')) return 'air-conditioner';
+    if (lower.includes('power') || lower.includes('outlet') || lower.includes('plug') || lower.includes('charging')) return 'power-plug';
+    if (lower.includes('usb')) return 'usb-port';
+    if (lower.includes('tv') || lower.includes('screen') || lower.includes('entertainment') || lower.includes('movie')) return 'television';
+    if (lower.includes('toilet') || lower.includes('restroom') || lower.includes('washroom') || lower.includes('wc')) return 'toilet';
+    if (lower.includes('seat') || lower.includes('recline') || lower.includes('legroom')) return 'seat-recline-extra';
+    if (lower.includes('food') || lower.includes('meal') || lower.includes('snack')) return 'food';
+    if (lower.includes('drink') || lower.includes('beverage') || lower.includes('water') || lower.includes('coffee')) return 'cup-water';
+    if (lower.includes('blanket')) return 'bed';
+    if (lower.includes('pillow')) return 'pillow';
+    if (lower.includes('curtain') || lower.includes('privacy')) return 'blinds';
+    if (lower.includes('light') || lower.includes('reading')) return 'lightbulb-on-outline';
+    if (lower.includes('music') || lower.includes('audio')) return 'headphones';
+    return 'check-circle-outline';
+};
+
 const BulletItem = ({ text }: { text: string }) => (
     <View style={styles.bulletItem}>
-        <Text style={styles.bullet}>•</Text>
+        <MaterialCommunityIcons 
+            name={getIconForFeature(text) as any} 
+            size={18} 
+            color="#3B82F6" 
+            style={styles.bulletIcon} 
+        />
         <Text style={styles.bulletText}>{text}</Text>
     </View>
 );
@@ -449,14 +397,12 @@ const styles = StyleSheet.create({
     },
     bulletItem: {
         flexDirection: 'row',
-        paddingVertical: 4,
+        paddingVertical: 6,
         paddingLeft: 8,
+        alignItems: 'center',
     },
-    bullet: {
-        fontSize: 16,
-        color: '#3B82F6',
-        marginRight: 8,
-        marginTop: 2,
+    bulletIcon: {
+        marginRight: 10,
     },
     bulletText: {
         flex: 1,
@@ -469,97 +415,6 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
         marginTop: 40,
-    },
-    // Photo Gallery Styles
-    photoGallerySection: {
-        marginTop: 24,
-        marginBottom: 16,
-    },
-    galleryTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#1e3c72',
-        marginBottom: 4,
-        paddingHorizontal: 20,
-    },
-    gallerySubtitle: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 16,
-        paddingHorizontal: 20,
-    },
-    photoGallery: {
-        marginTop: 8,
-    },
-    photoGalleryContent: {
-        paddingHorizontal: 16,
-        gap: 12,
-    },
-    photoFrame: {
-        width: 280,
-        height: 200,
-        borderRadius: 16,
-        overflow: 'hidden',
-        backgroundColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 6,
-        borderWidth: 3,
-        borderColor: '#fff',
-    },
-    photo: {
-        width: '100%',
-        height: '100%',
-    },
-    photoCredits: {
-        fontSize: 11,
-        color: '#888',
-        fontStyle: 'italic',
-        textAlign: 'center',
-        marginTop: 12,
-        paddingHorizontal: 20,
-    },
-    // Fullscreen Modal Styles
-    modalContainer: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.95)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    zoomContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        minWidth: '100%',
-        minHeight: '100%',
-    },
-    fullscreenImage: {
-        width: '100%',
-        height: '80%',
-    },
-    closeButton: {
-        position: 'absolute',
-        top: 60,
-        right: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 25,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.4)',
-    },
-    closeButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
     },
     // Tab Selector Styles
     tabsContainer: {

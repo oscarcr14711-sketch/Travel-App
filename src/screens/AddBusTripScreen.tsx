@@ -38,7 +38,7 @@ export default function AddBusTripScreen({ navigation, route }: any) {
             const busInfo = getBusInfoForCompany(busCompany);
 
             const tripData = {
-                type: 'bus',
+                type: 'bus' as const,
                 country,
                 origin,
                 destination,

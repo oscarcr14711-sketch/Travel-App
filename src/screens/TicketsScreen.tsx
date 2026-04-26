@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing } from '../theme';
 import { Ticket } from '../types/ticket.types';
-import { pickTicketPDF, getUserTickets, deleteTicket, updateTicket } from '../services/ticket.service';
+import { pickTicketPDF, pickTicketWallet, getUserTickets, deleteTicket, updateTicket } from '../services/ticket.service';
 import { getAirlineEmoji, getBusEmoji, getAirlineColors, getBusColors } from '../utils/logoMapper';
 
 // ─── Helpers ─────────────────────────────────────────
@@ -68,6 +68,7 @@ export default function TicketsScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<FilterTab>('all');
+    const [showFabMenu, setShowFabMenu] = useState(false);
 
     // Edit modal state
     const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
@@ -108,15 +109,29 @@ export default function TicketsScreen({ navigation }: any) {
     }, []);
 
     const handleImport = async () => {
+        setShowFabMenu(false);
         try {
             const newTicket = await pickTicketPDF();
             if (newTicket) {
                 loadTickets();
-                Alert.alert('Success', 'Ticket imported! Tap the info icon (ℹ️) to add trip details.');
+                Alert.alert('✅ PDF Imported', 'Tap the ℹ️ icon to add trip details.');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error importing ticket:', error);
             Alert.alert('Error', 'Failed to import PDF');
+        }
+    };
+
+    const handleImportWallet = async () => {
+        setShowFabMenu(false);
+        try {
+            const newTicket = await pickTicketWallet();
+            if (newTicket) {
+                loadTickets();
+                Alert.alert('✅ Wallet Pass Saved', 'Your .pkpass file has been added to your wallet.');
+            }
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to import wallet pass.');
         }
     };
 
@@ -196,163 +211,185 @@ export default function TicketsScreen({ navigation }: any) {
         const countdown = getCountdown(ticket.tripDate, ticket.tripTime);
         const upcoming = isUpcoming(ticket.tripDate, ticket.tripTime);
 
-        const emoji = isFlight
-            ? getAirlineEmoji(ticket.airline || '')
+        const emoji = isFlight ? getAirlineEmoji(ticket.airline || '')
             : isBus ? getBusEmoji(ticket.busCompany || '') : '📄';
 
-        const gradientColors = isFlight
-            ? getAirlineColors(ticket.airline || '') as [string, string, string]
-            : isBus ? getBusColors(ticket.busCompany || '') as [string, string, string]
-                : ['#6b5fcc', '#8b7fdf', '#ab9fef'] as [string, string, string];
+        // Accent color per type — completely different from trip card gradients
+        const accentColor = isFlight ? '#1a73e8'
+            : isBus ? '#f97316'
+                : '#7c3aed';
 
-        return (
-            <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => handleOpenTicket(ticket)}
-                style={styles.cardOuter}
-            >
-                <LinearGradient
-                    colors={gradientColors}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[
-                        styles.boardingPass,
-                        !upcoming && styles.pastCard,
-                    ]}
+        const isWallet = ticket.fileType === 'wallet';
+
+        // ── Wallet pass card ──
+        if (isWallet) {
+            return (
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    onLongPress={() => handleDelete(ticket.id, ticket.title)}
+                    style={styles.cardOuter}
                 >
-                    {/* Top Row — Carrier & Actions */}
-                    <View style={styles.cardTopRow}>
-                        <View style={styles.cardCarrier}>
-                            <Text style={styles.cardEmoji}>{emoji}</Text>
-                            <Text style={styles.cardCarrierName} numberOfLines={1}>
-                                {isFlight ? (ticket.airline || 'Flight')
-                                    : isBus ? (ticket.busCompany || 'Bus')
-                                        : 'Ticket'}
-                            </Text>
-                        </View>
-                        <View style={styles.cardActions}>
-                            <TouchableOpacity
-                                onPress={() => openEditModal(ticket)}
-                                style={styles.infoBtn}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Text style={styles.infoBtnText}>ℹ️</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => handleDelete(ticket.id, ticket.title)}
-                                style={styles.deleteBtn}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Text style={styles.deleteBtnText}>🗑️</Text>
+                    <LinearGradient
+                        colors={['#1a8a4a', '#27ae60', '#2ecc71']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.walletCard}
+                    >
+                        <View style={styles.walletTopRow}>
+                            <View style={styles.walletBadge}>
+                                <Text style={styles.walletBadgeText}>🎫  WALLET PASS</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => handleDelete(ticket.id, ticket.title)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <Text style={{ fontSize: 16 }}>🗑️</Text>
                             </TouchableOpacity>
                         </View>
-                    </View>
-
-                    {/* Route — Origin → Destination */}
-                    {isLinked ? (
-                        <View style={styles.routeRow}>
-                            <View style={styles.routeCity}>
-                                <Text style={styles.routeCode}>{ticket.tripOrigin}</Text>
+                        <Text style={styles.walletTitle} numberOfLines={2}>{ticket.title}</Text>
+                        <View style={styles.walletFooter}>
+                            <View style={styles.walletIconCircle}>
+                                <Text style={{ fontSize: 22 }}>🍎</Text>
                             </View>
-                            <View style={styles.routeLine}>
-                                <View style={styles.routeDot} />
-                                <View style={styles.routeDash} />
-                                <Text style={styles.routeIcon}>{isFlight ? '✈️' : '🚌'}</Text>
-                                <View style={styles.routeDash} />
-                                <View style={styles.routeDot} />
-                            </View>
-                            <View style={[styles.routeCity, { alignItems: 'flex-end' }]}>
-                                <Text style={styles.routeCode}>{ticket.tripDestination}</Text>
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={styles.unlinkedRow}>
-                            <Text style={styles.unlinkedTitle} numberOfLines={1}>{ticket.title}</Text>
-                            <Text style={styles.unlinkedHint}>Tap ℹ️ to add trip details</Text>
-                        </View>
-                    )}
-
-                    {/* Dashed Separator */}
-                    <View style={styles.separator}>
-                        <View style={styles.notchLeft} />
-                        <View style={styles.dashLine} />
-                        <View style={styles.notchRight} />
-                    </View>
-
-                    {/* Bottom Details Row */}
-                    <View style={styles.detailsRow}>
-                        {ticket.tripDate && (
-                            <View style={styles.detailItem}>
-                                <Text style={styles.detailLabel}>DATE</Text>
-                                <Text style={styles.detailValue}>{formatDate(ticket.tripDate)}</Text>
-                            </View>
-                        )}
-                        {ticket.tripTime && (
-                            <View style={styles.detailItem}>
-                                <Text style={styles.detailLabel}>TIME</Text>
-                                <Text style={styles.detailValue}>{ticket.tripTime}</Text>
-                            </View>
-                        )}
-                        {(ticket.flightNumber || ticket.busNumber) && (
-                            <View style={styles.detailItem}>
-                                <Text style={styles.detailLabel}>{isFlight ? 'FLIGHT' : 'BUS'}</Text>
-                                <Text style={styles.detailValue}>{ticket.flightNumber || ticket.busNumber}</Text>
-                            </View>
-                        )}
-                        {ticket.gate && (
-                            <View style={styles.detailItem}>
-                                <Text style={styles.detailLabel}>GATE</Text>
-                                <Text style={styles.detailValue}>{ticket.gate}</Text>
-                            </View>
-                        )}
-                        {ticket.seat && (
-                            <View style={styles.detailItem}>
-                                <Text style={styles.detailLabel}>SEAT</Text>
-                                <Text style={styles.detailValue}>{ticket.seat}</Text>
-                            </View>
-                        )}
-                        {!isLinked && (
-                            <View style={styles.detailItem}>
-                                <Text style={styles.detailLabel}>IMPORTED</Text>
-                                <Text style={styles.detailValue}>
-                                    {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            <View>
+                                <Text style={styles.walletImportedLabel}>ADDED</Text>
+                                <Text style={styles.walletImportedDate}>
+                                    {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </Text>
                             </View>
+                            <View style={styles.walletEditBtn}>
+                                <TouchableOpacity onPress={() => openEditModal(ticket)}>
+                                    <Text style={styles.walletEditText}>Edit Details</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </LinearGradient>
+                </TouchableOpacity>
+            );
+        }
+
+        // ── Standard Boarding Pass / PDF card ──
+        // ── Standard Physical Ticket / PDF card ──
+        return (
+            <View style={styles.ticketCardOuter}>
+                <TouchableOpacity
+                    activeOpacity={0.95}
+                    onPress={() => handleOpenTicket(ticket)}
+                    style={[styles.ticketCard, !upcoming && styles.pastCard]}
+                >
+                    {/* Left Color Accent Strip */}
+                    <View style={[styles.ticketAccentStrip, { backgroundColor: accentColor }]} />
+
+                    <View style={styles.ticketMain}>
+                        {/* Top Row — Carrier & Actions */}
+                        <View style={styles.cardTopRow}>
+                            <View style={styles.cardCarrier}>
+                                <Text style={styles.cardEmoji}>{emoji}</Text>
+                                <Text style={[styles.cardCarrierName, { color: '#1a1a2e' }]} numberOfLines={1}>
+                                    {isFlight ? (ticket.airline || 'Flight')
+                                        : isBus ? (ticket.busCompany || 'Bus')
+                                            : 'Ticket'}
+                                </Text>
+                            </View>
+                            <View style={styles.cardActions}>
+                                <TouchableOpacity onPress={() => openEditModal(ticket)} style={styles.ticketActionBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                    <Text style={{ fontSize: 13 }}>✏️</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleDelete(ticket.id, ticket.title)} style={styles.ticketActionBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                    <Text style={{ fontSize: 13 }}>🗑️</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Route — Origin → Destination */}
+                        {isLinked ? (
+                            <View style={styles.ticketRouteRow}>
+                                <Text style={styles.ticketRouteCode}>{ticket.tripOrigin}</Text>
+                                <View style={styles.ticketRouteLine}>
+                                    <Text style={styles.ticketRouteIcon}>{isFlight ? '✈️' : '🚌'}</Text>
+                                    <View style={styles.ticketRouteDash} />
+                                </View>
+                                <Text style={styles.ticketRouteCode}>{ticket.tripDestination}</Text>
+                            </View>
+                        ) : (
+                            <View style={[styles.unlinkedRow, { marginTop: 10, marginBottom: 20 }]}>
+                                <Text style={[styles.unlinkedTitle, { color: '#1a1a2e' }]} numberOfLines={1}>{ticket.title}</Text>
+                                <Text style={[styles.unlinkedHint, { color: '#888' }]}>Tap ✏️ to add trip details</Text>
+                            </View>
                         )}
+
+                        {/* Grid Details */}
+                        <View style={styles.ticketDetailsGrid}>
+                            {ticket.tripDate && (
+                                <View style={styles.ticketDetailCell}>
+                                    <Text style={styles.ticketDetailLabel}>DATE</Text>
+                                    <Text style={styles.ticketDetailValue} numberOfLines={1}>{formatDate(ticket.tripDate)}</Text>
+                                </View>
+                            )}
+                            {ticket.tripTime && (
+                                <View style={styles.ticketDetailCell}>
+                                    <Text style={styles.ticketDetailLabel}>TIME</Text>
+                                    <Text style={styles.ticketDetailValue}>{ticket.tripTime}</Text>
+                                </View>
+                            )}
+                            {(ticket.flightNumber || ticket.busNumber) && (
+                                <View style={styles.ticketDetailCell}>
+                                    <Text style={styles.ticketDetailLabel}>{isFlight ? 'FLIGHT' : 'BUS'}</Text>
+                                    <Text style={styles.ticketDetailValue}>{ticket.flightNumber || ticket.busNumber}</Text>
+                                </View>
+                            )}
+                            {ticket.gate && (
+                                <View style={styles.ticketDetailCell}>
+                                    <Text style={styles.ticketDetailLabel}>GATE</Text>
+                                    <Text style={styles.ticketDetailValue}>{ticket.gate}</Text>
+                                </View>
+                            )}
+                            {ticket.seat && (
+                                <View style={styles.ticketDetailCell}>
+                                    <Text style={styles.ticketDetailLabel}>SEAT</Text>
+                                    <Text style={styles.ticketDetailValue}>{ticket.seat}</Text>
+                                </View>
+                            )}
+                            {!isLinked && (
+                                <View style={styles.ticketDetailCell}>
+                                    <Text style={styles.ticketDetailLabel}>IMPORTED</Text>
+                                    <Text style={styles.ticketDetailValue}>
+                                        {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                     </View>
 
-                    {/* Countdown Badge */}
-                    {countdown && (
-                        <View style={[
-                            styles.countdownBadge,
-                            !upcoming && styles.countdownPast
-                        ]}>
-                            <Text style={styles.countdownText}>
-                                {upcoming ? `⏱ Departing in ${countdown}` : '✓ Completed'}
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Confirmation Code */}
-                    {ticket.confirmationCode && (
-                        <View style={styles.confirmRow}>
-                            <Text style={styles.confirmLabel}>CONFIRMATION</Text>
-                            <Text style={styles.confirmValue}>{ticket.confirmationCode}</Text>
-                        </View>
-                    )}
-                    {/* PDF Preview Strip */}
-                    <View style={styles.pdfStrip}>
-                        <View style={styles.pdfIconWrap}>
-                            <Text style={styles.pdfIconText}>PDF</Text>
-                        </View>
-                        <View style={styles.pdfInfo}>
-                            <Text style={styles.pdfName} numberOfLines={1}>{ticket.title}</Text>
-                            <Text style={styles.pdfHint}>Tap to open document</Text>
-                        </View>
-                        <Text style={styles.pdfChevron}>›</Text>
+                    {/* Perforation Divider */}
+                    <View style={styles.ticketDividerWrap}>
+                        <View style={[styles.ticketNotch, styles.ticketNotchLeft]} />
+                        <View style={styles.ticketDashLine} />
+                        <View style={[styles.ticketNotch, styles.ticketNotchRight]} />
                     </View>
-                </LinearGradient>
-            </TouchableOpacity>
+
+                    {/* Barcode & PDF Bottom Section */}
+                    <View style={styles.ticketBottom}>
+                        <View style={styles.ticketBarcodeArea}>
+                            {/* Fake Barcode Lines */}
+                            <View style={styles.barcodeLineGroup}>
+                                {[1, 2, 1, 4, 1, 2, 3, 1, 1, 2, 4, 1, 2, 1, 1].map((w, i) => (
+                                    <View key={i} style={[styles.barcodeStrut, { width: w * 2 }]} />
+                                ))}
+                            </View>
+                            {ticket.confirmationCode && (
+                                <Text style={styles.ticketBarcodeText}>{ticket.confirmationCode}</Text>
+                            )}
+                        </View>
+
+                        {/* Mini PDF Open Button */}
+                        <View style={styles.ticketPdfBtnWrap}>
+                            <View style={styles.ticketPdfBtn}>
+                                <Text style={styles.ticketPdfBtnIcon}>📄</Text>
+                                <Text style={styles.ticketPdfBtnText}>Open PDF</Text>
+                            </View>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </View>
         );
     };
 
@@ -446,9 +483,33 @@ export default function TicketsScreen({ navigation }: any) {
             </ScrollView>
 
             {/* FAB Import Button */}
-            <TouchableOpacity style={styles.fab} onPress={handleImport} activeOpacity={0.8}>
-                <Text style={styles.fabText}>+</Text>
-            </TouchableOpacity>
+            <View style={styles.fabContainer}>
+                {showFabMenu && (
+                    <View style={styles.fabMenu}>
+                        <TouchableOpacity style={styles.fabMenuItem} onPress={handleImportWallet} activeOpacity={0.85}>
+                            <Text style={styles.fabMenuIcon}>🍎</Text>
+                            <View>
+                                <Text style={styles.fabMenuTitle}>Wallet Pass</Text>
+                                <Text style={styles.fabMenuSub}>.pkpass file</Text>
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.fabMenuItem} onPress={handleImport} activeOpacity={0.85}>
+                            <Text style={styles.fabMenuIcon}>📄</Text>
+                            <View>
+                                <Text style={styles.fabMenuTitle}>PDF Ticket</Text>
+                                <Text style={styles.fabMenuSub}>Boarding pass, e-ticket</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                <TouchableOpacity
+                    style={[styles.fab, showFabMenu && styles.fabActive]}
+                    onPress={() => setShowFabMenu(v => !v)}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.fabText}>{showFabMenu ? '✕' : '+'}</Text>
+                </TouchableOpacity>
+            </View>
 
             {/* ─── Edit / Link Trip Modal ─── */}
             <Modal visible={!!editingTicket} animationType="slide" transparent>
@@ -732,50 +793,72 @@ const styles = StyleSheet.create({
     },
     pastCard: { opacity: 0.65 },
 
-    // PDF Preview Strip
-    pdfStrip: {
+    // Premium PDF Thumbnail Row
+    pdfThumbnailRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.95)',
+        backgroundColor: 'rgba(255,255,255,0.97)',
         borderBottomLeftRadius: 18,
         borderBottomRightRadius: 18,
         marginTop: 14,
         marginHorizontal: -18,
         paddingHorizontal: 14,
-        paddingVertical: 11,
-        gap: 12,
+        paddingVertical: 12,
+        gap: 14,
     },
-    pdfIconWrap: {
-        width: 38,
-        height: 38,
+    pdfThumb: {
+        width: 60,
+        height: 74,
         borderRadius: 8,
-        backgroundColor: '#ef4444',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
+        paddingTop: 8,
+        paddingHorizontal: 6,
+        gap: 5,
+        shadowColor: '#c0392b',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+        elevation: 4,
     },
-    pdfIconText: {
+    pdfThumbLabel: {
         color: '#fff',
         fontWeight: '900',
-        fontSize: 11,
-        letterSpacing: 0.5,
+        fontSize: 10,
+        letterSpacing: 1,
+        marginBottom: 4,
     },
-    pdfInfo: {
+    pdfThumbLine: {
+        width: '90%',
+        height: 3,
+        backgroundColor: 'rgba(255,255,255,0.5)',
+        borderRadius: 2,
+    },
+    pdfThumbInfo: {
         flex: 1,
     },
-    pdfName: {
+    pdfThumbTitle: {
         fontSize: 13,
         fontWeight: '700',
         color: '#1a1a2e',
+        marginBottom: 3,
     },
-    pdfHint: {
+    pdfThumbSub: {
         fontSize: 11,
         color: '#888',
-        marginTop: 1,
+        marginBottom: 8,
     },
-    pdfChevron: {
-        fontSize: 22,
-        color: '#aaa',
-        fontWeight: '300',
+    pdfOpenBtn: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#1a1a2e',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+    },
+    pdfOpenBtnText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '700',
     },
 
     // Card Top
@@ -879,24 +962,6 @@ const styles = StyleSheet.create({
     confirmLabel: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1 },
     confirmValue: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: 3 },
 
-    // FAB
-    fab: {
-        position: 'absolute',
-        bottom: 100,
-        right: 20,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: '#6b5fcc',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#6b5fcc',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    fabText: { fontSize: 32, color: '#fff', fontWeight: 'bold', marginTop: -2 },
 
     // ─── Modal ───
     modalOverlay: {
@@ -963,4 +1028,264 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     saveBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+    // FAB Container & Menu
+    fabContainer: {
+        position: 'absolute',
+        right: 20,
+        bottom: 30,
+        alignItems: 'flex-end',
+        gap: 10,
+    },
+    fabMenu: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 8,
+        gap: 2,
+        marginBottom: 4,
+        minWidth: 210,
+    },
+    fabMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 14,
+        borderRadius: 12,
+    },
+    fabMenuIcon: { fontSize: 24 },
+    fabMenuTitle: { fontSize: 14, fontWeight: '700', color: '#1a1a2e' },
+    fabMenuSub: { fontSize: 11, color: '#888', marginTop: 1 },
+    fab: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#1a1a2e',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        elevation: 8,
+    },
+    fabActive: { backgroundColor: '#e74c3c' },
+    fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 32 },
+
+    // Wallet Pass Card
+    walletCard: {
+        borderRadius: 18,
+        padding: 18,
+        paddingBottom: 16,
+        shadowColor: '#27ae60',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    walletTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+    walletBadge: {
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 20,
+    },
+    walletBadgeText: { color: '#fff', fontWeight: '800', fontSize: 11, letterSpacing: 1 },
+    walletTitle: { fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 16, letterSpacing: 0.3 },
+    walletFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: 'rgba(0,0,0,0.15)',
+        borderRadius: 12,
+        padding: 10,
+    },
+    walletIconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    walletImportedLabel: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.7)', letterSpacing: 1 },
+    walletImportedDate: { fontSize: 12, fontWeight: '700', color: '#fff' },
+    walletEditBtn: {
+        marginLeft: 'auto' as any,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 10,
+    },
+    walletEditText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+
+    // ─── Physical Ticket Styles ───
+    ticketCardOuter: {
+        marginBottom: 16,
+    },
+    ticketCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        flexDirection: 'row',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 6,
+        overflow: 'hidden',
+    },
+    ticketAccentStrip: {
+        width: 14,
+        backgroundColor: '#ccc',
+    },
+    ticketMain: {
+        flex: 1,
+        padding: 18,
+        paddingBottom: 14,
+    },
+    ticketActionBtn: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: '#f0f0f5',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    ticketRouteRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginVertical: 14,
+    },
+    ticketRouteCode: {
+        fontSize: 32,
+        fontWeight: '900',
+        color: '#1a1a2e',
+        letterSpacing: 1,
+        width: 80,
+    },
+    ticketRouteLine: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    ticketRouteDash: {
+        position: 'absolute',
+        width: '100%',
+        height: 2,
+        backgroundColor: '#e0e0e0',
+        zIndex: -1,
+    },
+    ticketRouteIcon: {
+        fontSize: 20,
+        backgroundColor: '#fff',
+        paddingHorizontal: 8,
+    },
+    ticketDetailsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginTop: 4,
+    },
+    ticketDetailCell: {
+        minWidth: '28%',
+        marginBottom: 8,
+    },
+    ticketDetailLabel: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#888',
+        letterSpacing: 1,
+        marginBottom: 3,
+    },
+    ticketDetailValue: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#1a1a2e',
+    },
+    ticketDividerWrap: {
+        width: '100%',
+        height: 20,
+        justifyContent: 'center',
+        position: 'absolute',
+        bottom: 74,
+        left: 0,
+    },
+    ticketDashLine: {
+        height: 2,
+        borderStyle: 'dashed',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        marginHorizontal: 14,
+    },
+    ticketNotch: {
+        position: 'absolute',
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#f4f4f8',
+        top: 0,
+    },
+    ticketNotchLeft: { left: -10 },
+    ticketNotchRight: { right: -10 },
+    ticketBottom: {
+        position: 'absolute',
+        bottom: 0,
+        left: 14,
+        right: 0,
+        height: 74,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 18,
+        backgroundColor: '#fafafa',
+        borderTopLeftRadius: 16,
+    },
+    ticketBarcodeArea: {
+        alignItems: 'center',
+        gap: 4,
+    },
+    barcodeLineGroup: {
+        flexDirection: 'row',
+        height: 24,
+        alignItems: 'flex-end',
+        gap: 2,
+    },
+    barcodeStrut: {
+        backgroundColor: '#1a1a2e',
+        height: '100%',
+        borderRadius: 1,
+    },
+    ticketBarcodeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#1a1a2e',
+        letterSpacing: 3,
+    },
+    ticketPdfBtnWrap: {
+        alignItems: 'flex-end',
+    },
+    ticketPdfBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e53e3e',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        gap: 6,
+    },
+    ticketPdfBtnIcon: { fontSize: 14 },
+    ticketPdfBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 });
+

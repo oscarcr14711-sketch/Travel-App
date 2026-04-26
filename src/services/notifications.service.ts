@@ -84,7 +84,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                 body: `${trip.type === 'flight' ? 'Flight' : 'Bus'} to ${trip.destination} - Departure in ${Math.ceil(secondsUntilDeparture / 86400)} days`,
                 sound: true,
             },
-            trigger: { seconds: 2 },
+            trigger: { seconds: 5, type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
         });
         notificationIds.push(confirmId);
 
@@ -96,7 +96,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `${trip.destination} trip in 7 days - Time to start preparing!`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - (7 * 86400) },
+                trigger: { seconds: Math.round(secondsUntilDeparture - 7 * 86400), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
             });
             notificationIds.push(weekId);
         }
@@ -109,7 +109,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Don't forget to pack for your ${trip.type === 'flight' ? 'flight' : 'bus trip'} to ${trip.destination} tomorrow`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 86400 },
+                trigger: { seconds: Math.round(secondsUntilDeparture - 86400), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
             });
             notificationIds.push(packingId);
         }
@@ -122,7 +122,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Today's the day! Check your checklist for ${trip.destination}`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 21600 },
+                trigger: { seconds: Math.round(secondsUntilDeparture - 21600), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
             });
             notificationIds.push(morningId);
         }
@@ -135,7 +135,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `${trip.type === 'flight' ? 'Flight' : 'Bus'} to ${trip.destination} departs tomorrow at ${trip.departureTime}`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 86400 },
+                trigger: { seconds: Math.round(secondsUntilDeparture - 86400), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
             });
             notificationIds.push(dayId);
         }
@@ -148,7 +148,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Check in for your ${trip.airline} flight ${trip.flightNumber} to ${trip.destination}`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 86400 },
+                trigger: { seconds: Math.round(secondsUntilDeparture - 86400), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
             });
             notificationIds.push(checkinId);
         }
@@ -161,7 +161,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `${trip.busCompany} recommends arriving 15 minutes early`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 5400 }, // 1.5 hours before
+                trigger: { seconds: Math.round(secondsUntilDeparture - 5400), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL }, // 1.5 hours before
             });
             notificationIds.push(busEarlyId);
         }
@@ -174,7 +174,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Time to head to the ${trip.type === 'flight' ? 'airport' : 'bus station'} for your trip to ${trip.destination}`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 10800 },
+                trigger: { seconds: Math.round(secondsUntilDeparture - 10800), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
             });
             notificationIds.push(threeHourId);
         }
@@ -187,7 +187,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Last reminder! ${trip.type === 'flight' ? 'Flight' : 'Bus'} to ${trip.destination} departs soon`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 3600 },
+                trigger: { seconds: Math.round(secondsUntilDeparture - 3600), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL },
             });
             notificationIds.push(oneHourId);
         }
@@ -200,7 +200,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `${trip.type === 'flight' ? 'Flight' : 'Bus'} to ${trip.destination} at ${trip.departureTime} today`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 7200 }, // 2 hours before
+                trigger: { seconds: Math.round(secondsUntilDeparture - 7200), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL }, // 2 hours before
             });
             notificationIds.push(wakeupId);
         }
@@ -213,7 +213,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Boarding starts in 30 minutes for flight ${trip.flightNumber} to ${trip.destination}`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 1800 }, // 30 min before
+                trigger: { seconds: Math.round(secondsUntilDeparture - 1800), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL }, // 30 min before
             });
             notificationIds.push(boardingId);
         }
@@ -226,7 +226,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Morning of travel - check your passport, tickets, and packing list!`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 28800 }, // 8 hours before
+                trigger: { seconds: Math.round(secondsUntilDeparture - 28800), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL }, // 8 hours before
             });
             notificationIds.push(checklistId);
         }
@@ -241,7 +241,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Check the weather in ${trip.destination} and pack accordingly!`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 172800 }, // 2 days before
+                trigger: { seconds: Math.round(secondsUntilDeparture - 172800), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL }, // 2 days before
             });
             notificationIds.push(weatherId);
         }
@@ -258,7 +258,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                         body: `Hope you enjoyed ${trip.destination}! Your trip is now complete.`,
                         sound: true,
                     },
-                    trigger: { seconds: secondsUntilReturn + 3600 }, // 1 hour after return
+                    trigger: { seconds: Math.round(secondsUntilReturn + 3600), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL }, // 1 hour after return
                 });
                 notificationIds.push(welcomeId);
             }
@@ -272,7 +272,7 @@ export async function scheduleAllTripNotifications(trip: any): Promise<string[]>
                     body: `Your bus departs from Platform ${trip.departurePlatform} in 10 minutes`,
                     sound: true,
                 },
-                trigger: { seconds: secondsUntilDeparture - 600 }, // 10 min before
+                trigger: { seconds: Math.round(secondsUntilDeparture - 600), type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL }, // 10 min before
             });
             notificationIds.push(platformId);
         }

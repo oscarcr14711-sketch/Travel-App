@@ -3,21 +3,28 @@ import {
     View, StyleSheet, TouchableOpacity, Text, SafeAreaView, StatusBar,
     Platform, Linking, ScrollView,
 } from 'react-native';
-import MapView, { Region } from 'react-native-maps';
+import MapView, { Region, Marker } from 'react-native-maps';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, spacing, typography } from '../theme';
 import { Airport } from '../data/airports-data';
 
 const SEARCH_CATEGORIES = [
-    { key: 'food', emoji: '🍽️', label: 'Food', query: 'restaurant' },
-    { key: 'coffee', emoji: '☕', label: 'Coffee', query: 'coffee' },
-    { key: 'lounge', emoji: '🛋️', label: 'Lounges', query: 'airport lounge' },
-    { key: 'shop', emoji: '🛍️', label: 'Shops', query: 'shop' },
-    { key: 'bar', emoji: '🍺', label: 'Bars', query: 'bar' },
-    { key: 'pharmacy', emoji: '💊', label: 'Pharmacy', query: 'pharmacy' },
-    { key: 'exchange', emoji: '💱', label: 'Exchange', query: 'currency exchange' },
-    { key: 'charging', emoji: '🔌', label: 'Charging', query: 'charging station' },
+    { key: 'food', emoji: '🍽️', label: 'Food', tags: 'node["amenity"~"restaurant|fast_food"]' },
+    { key: 'coffee', emoji: '☕', label: 'Coffee', tags: 'node["amenity"="cafe"]' },
+    { key: 'lounge', emoji: '🛋️', label: 'Lounges', tags: 'node["aeroway"="lounge"]' },
+    { key: 'shop', emoji: '🛍️', label: 'Shops', tags: 'node["shop"]' },
+    { key: 'bar', emoji: '🍺', label: 'Bars', tags: 'node["amenity"="bar"]' },
+    { key: 'pharmacy', emoji: '💊', label: 'Pharmacy', tags: 'node["amenity"="pharmacy"]' },
+    { key: 'exchange', emoji: '💱', label: 'Exchange', tags: 'node["amenity"="bureau_de_change"]' },
+    { key: 'charging', emoji: '🔌', label: 'Charging', tags: 'node["amenity"="charging_station"]' },
 ];
+
+interface POI {
+    id: number;
+    lat: number;
+    lon: number;
+    tags: { name?: string; brand?: string };
+}
 
 export default function AirportMapsScreen() {
     const navigation = useNavigation();
@@ -28,9 +35,13 @@ export default function AirportMapsScreen() {
     const [mapRegion] = useState<Region>({
         latitude: airport.coordinate.latitude,
         longitude: airport.coordinate.longitude,
-        latitudeDelta: 0.006,
-        longitudeDelta: 0.006,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
     });
+
+    const [poiMarkers, setPoiMarkers] = useState<POI[]>([]);
+    const [loadingPoi, setLoadingPoi] = useState(false);
+    const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
     useLayoutEffect(() => {
         navigation.setOptions({ headerShown: false });
@@ -46,22 +57,57 @@ export default function AirportMapsScreen() {
         }
     };
 
-    // Search a category near the airport in Apple Maps
-    const searchInMaps = (query: string) => {
+    // Search a category near the airport directly inside the app using Overpass API
+    const searchInMaps = async (category: any) => {
+        if (activeCategory === category.key) {
+            setPoiMarkers([]);
+            setActiveCategory(null);
+            return;
+        }
+
+        setActiveCategory(category.key);
+        setLoadingPoi(true);
+        setPoiMarkers([]);
+
         const { latitude, longitude } = airport.coordinate;
-        if (Platform.OS === 'ios') {
-            Linking.openURL(`maps://?q=${encodeURIComponent(query)}&sll=${latitude},${longitude}&z=17`);
-        } else {
-            Linking.openURL(`geo:${latitude},${longitude}?q=${encodeURIComponent(query)}`);
+        const radius = 1000; // 1km radius around airport center
+
+        const query = `
+            [out:json][timeout:25];
+            (
+              ${category.tags}(around:${radius},${latitude},${longitude});
+            );
+            out body;
+            >;
+            out skel qt;
+        `;
+
+        try {
+            const res = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `data=${encodeURIComponent(query)}`
+            });
+            const data = await res.json();
+            
+            // Filter elements that have a name and are nodes
+            const pois = data.elements.filter((e: any) => e.type === 'node' && (e.tags?.name || e.tags?.brand));
+            setPoiMarkers(pois);
+        } catch (error) {
+            console.error('POI Fetch Error:', error);
+        } finally {
+            setLoadingPoi(false);
         }
     };
 
     const resetMap = () => {
+        setPoiMarkers([]);
+        setActiveCategory(null);
         mapRef.current?.animateToRegion({
             latitude: airport.coordinate.latitude,
             longitude: airport.coordinate.longitude,
-            latitudeDelta: 0.006,
-            longitudeDelta: 0.006,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
         }, 500);
     };
 
@@ -85,7 +131,7 @@ export default function AirportMapsScreen() {
                 </View>
             </SafeAreaView>
 
-            {/* Full-screen Apple Maps */}
+            {/* Full-screen Native Maps (Apple Maps on iOS, Google Maps on Android) */}
             <MapView
                 ref={mapRef}
                 style={styles.map}
@@ -99,7 +145,16 @@ export default function AirportMapsScreen() {
                 showsBuildings={true}
                 pitchEnabled={true}
                 rotateEnabled={true}
-            />
+            >
+                {poiMarkers.map((poi) => (
+                    <Marker
+                        key={poi.id}
+                        coordinate={{ latitude: poi.lat, longitude: poi.lon }}
+                        title={poi.tags.name || poi.tags.brand || "Location"}
+                        pinColor={colors.primary.main}
+                    />
+                ))}
+            </MapView>
 
             {/* Bottom Panel */}
             <View style={styles.bottomPanel}>
@@ -114,17 +169,28 @@ export default function AirportMapsScreen() {
                 </TouchableOpacity>
 
                 {/* Quick Search Categories */}
-                <Text style={styles.catTitle}>Find nearby at {airport.iataCode}</Text>
+                <View style={styles.catHeader}>
+                    <Text style={styles.catTitle}>Find nearby at {airport.iataCode}</Text>
+                    {loadingPoi && <Text style={styles.loadingText}>Searching...</Text>}
+                </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
                     {SEARCH_CATEGORIES.map(cat => (
                         <TouchableOpacity
                             key={cat.key}
-                            style={styles.catChip}
-                            onPress={() => searchInMaps(cat.query)}
+                            style={[
+                                styles.catChip,
+                                activeCategory === cat.key && styles.catChipActive
+                            ]}
+                            onPress={() => searchInMaps(cat)}
                             activeOpacity={0.7}
                         >
                             <Text style={styles.catEmoji}>{cat.emoji}</Text>
-                            <Text style={styles.catLabel}>{cat.label}</Text>
+                            <Text style={[
+                                styles.catLabel,
+                                activeCategory === cat.key && styles.catLabelActive
+                            ]}>
+                                {cat.label}
+                            </Text>
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
@@ -183,7 +249,9 @@ const styles = StyleSheet.create({
     mapsBtnTitle: { fontSize: 15, fontWeight: '700', color: '#1a1a2e' },
     mapsBtnSub: { fontSize: 12, color: '#666', marginTop: 2 },
     mapsBtnChevron: { fontSize: 22, color: '#999' },
-    catTitle: { fontSize: 14, fontWeight: '700', color: '#1a1a2e', marginBottom: 8 },
+    catHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    catTitle: { fontSize: 14, fontWeight: '700', color: '#1a1a2e' },
+    loadingText: { fontSize: 12, color: colors.primary.main, fontWeight: '600' },
     catRow: { gap: 8, paddingRight: 16 },
     catChip: {
         flexDirection: 'row',
@@ -194,6 +262,10 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         gap: 5,
     },
+    catChipActive: {
+        backgroundColor: colors.primary.main,
+    },
     catEmoji: { fontSize: 14 },
     catLabel: { fontSize: 12, fontWeight: '600', color: '#1a1a2e' },
+    catLabelActive: { color: '#fff' },
 });

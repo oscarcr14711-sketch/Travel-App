@@ -28,7 +28,7 @@ export default async function handler(req: Request) {
     }
 
     // Call RapidAPI using the secret Environment Variable
-    const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
+    const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY?.trim();
     
     if (!RAPIDAPI_KEY) {
       return new Response(JSON.stringify({ error: 'Server misconfiguration: Missing API Key' }), {
@@ -36,6 +36,9 @@ export default async function handler(req: Request) {
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
+
+    // Temporary debug — remove after confirming key is correct
+    console.log(`API Key length: ${RAPIDAPI_KEY.length}, starts with: ${RAPIDAPI_KEY.substring(0, 6)}`);
 
     const response = await fetch(
       `https://aerodatabox.p.rapidapi.com/flights/number/${flightNumber}/${date}`,
@@ -66,7 +69,11 @@ export default async function handler(req: Request) {
     // Return the exact same flight data back to the app, but securely
     return new Response(JSON.stringify(data), {
       status: 200,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Cache-Control': 's-maxage=600, stale-while-revalidate',
+        ...corsHeaders 
+      },
     });
 
   } catch (error: any) {

@@ -92,9 +92,9 @@ export default function FlightStatusCard({ flightNumber, departureDate }: Flight
             <View style={styles.card}>
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorIcon}>⚠️</Text>
-                    <Text style={styles.errorText}>Unable to load flight status</Text>
+                    <Text style={styles.errorText}>Flight status unavailable</Text>
                     <Text style={styles.errorSubtext}>
-                        This feature requires an AeroDataBox API key
+                        Status may not be available yet. Try again closer to your departure date.
                     </Text>
                     <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
                         <Text style={styles.retryText}>Try Again</Text>
@@ -118,12 +118,22 @@ export default function FlightStatusCard({ flightNumber, departureDate }: Flight
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         <Text style={styles.headerEmoji}>{getStatusEmoji(status.status)}</Text>
-                        <Text style={styles.headerTitle}>Live Flight Status</Text>
+                        <Text style={styles.headerTitle}>{status.isOffline ? 'Offline Flight Status' : 'Live Flight Status'}</Text>
                     </View>
-                    <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
-                        <Text style={styles.refreshIcon}>🔄</Text>
-                    </TouchableOpacity>
+                    {!status.isOffline && (
+                        <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
+                            <Text style={styles.refreshIcon}>🔄</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
+
+                {/* Offline Banner */}
+                {status.isOffline && (
+                    <View style={styles.offlineBanner}>
+                        <Text style={styles.offlineIcon}>📶</Text>
+                        <Text style={styles.offlineText}>Offline Version - Showing last saved data</Text>
+                    </View>
+                )}
 
                 {/* Status Badge */}
                 <View style={styles.statusBadge}>
@@ -229,6 +239,24 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     refreshIcon: { fontSize: 18 },
+
+    // Offline Banner
+    offlineBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        marginBottom: 12,
+        gap: 8,
+    },
+    offlineIcon: { fontSize: 14 },
+    offlineText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+    },
 
     // Status Badge
     statusBadge: {

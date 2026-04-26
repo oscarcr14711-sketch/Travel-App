@@ -1,5 +1,4 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import app from './firebase.service'; // Ensure firebase is initialized
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface FlightAutofill {
     airline: string;
@@ -17,6 +16,7 @@ export interface FlightAutofill {
     departureGate?: string;
     arrivalTerminal?: string;
     status: string;
+    isOffline?: boolean;
 }
 
 /**
@@ -27,66 +27,71 @@ export async function lookupFlightByNumber(
     flightNumber: string,
     date: string  // YYYY-MM-DD
 ): Promise<FlightAutofill | null> {
+    const clean = flightNumber.trim().toUpperCase().replace(/\s/g, '');
+    const cacheKey = `@flight_lookup_${clean}_${date}`;
+
     try {
-        const functions = getFunctions(app, 'us-central1'); // Make sure region matches deployment
-        const lookupFn = httpsCallable<{ flightNumber: string, date: string }, FlightAutofill>(functions, 'lookupFlight');
+        const url = `${VERCEL_FLIGHT_API}?flightNumber=${encodeURIComponent(clean)}&date=${encodeURIComponent(date)}`;
+        const response = await fetch(url, { method: 'GET' });
 
-        const clean = flightNumber.trim().toUpperCase().replace(/\s/g, '');
-        const response = await lookupFn({ flightNumber: clean, date });
-
-        return response.data;
-
-    } catch (err: any) {
-        // Firebase HttpsError exposes the code and message
-        if (err.code === 'resource-exhausted' || err.message === 'API_RATELIMIT_EXCEEDED') {
-            console.warn('AeroDataBox API Rate Limit Exceeded!');
-            throw new Error('API_RATELIMIT_EXCEEDED');
-        }
-        if (err.code === 'permission-denied' || err.message === 'API_FORBIDDEN') {
-            console.warn('AeroDataBox API Forbidden (Not Subscribed)');
-            throw new Error('API_FORBIDDEN');
+        if (!response.ok) {
+            const body = await response.text().catch(() => '(no body)');
+            console.error(`Flight lookup error: ${response.status} — ${body}`);
+            throw new Error(`API_ERROR_${response.status}`);
         }
 
-        console.error('Cloud Function lookup failed:', err);
-        return null;
-    }
-} return {
-    date: `${m}/${day}/${y}`,
-    time: t ? t.substring(0, 5) : '',
-};
+        const data = await response.json();
+        const f = Array.isArray(data) ? data[0] : data;
+        if (!f) return null;
+
+        // Parse ISO local time helper
+        const parseDateTime = (iso?: string): { date: string; time: string } => {
+            if (!iso) return { date: '', time: '' };
+            const [d, t] = iso.replace('T', ' ').split(' ');
+            if (!d) return { date: '', time: '' };
+            const [y, m, day] = d.split('-');
+            return { date: `${m}/${day}/${y}`, time: t ? t.substring(0, 5) : '' };
         };
 
-const dep = parseDateTime(
-    f.departure?.scheduledTime?.local || f.departure?.scheduledTime?.utc
-);
-const arr = parseDateTime(
-    f.arrival?.scheduledTime?.local || f.arrival?.scheduledTime?.utc
-);
+        const dep = parseDateTime(f.departure?.scheduledTime?.local || f.departure?.scheduledTime?.utc);
+        const arr = parseDateTime(f.arrival?.scheduledTime?.local || f.arrival?.scheduledTime?.utc);
 
-return {
-    airline: f.airline?.name || '',
-    flightNumber: f.number || clean,
-    origin: f.departure?.airport?.municipalityName || f.departure?.airport?.name || '',
-    originIata: f.departure?.airport?.iata || '',
-    destination: f.arrival?.airport?.municipalityName || f.arrival?.airport?.name || '',
-    destinationIata: f.arrival?.airport?.iata || '',
-    departureDate: dep.date,
-    departureTime: dep.time,
-    arrivalDate: arr.date,
-    arrivalTime: arr.time,
-    aircraftModel: f.aircraft?.model || undefined,
-    departureTerminal: f.departure?.terminal || undefined,
-    departureGate: f.departure?.gate || undefined,
-    arrivalTerminal: f.arrival?.terminal || undefined,
-    status: f.status || 'scheduled',
-};
+        const result: FlightAutofill = {
+            airline: f.airline?.name || '',
+            flightNumber: f.number || clean,
+            origin: f.departure?.airport?.municipalityName || f.departure?.airport?.name || '',
+            originIata: f.departure?.airport?.iata || '',
+            destination: f.arrival?.airport?.municipalityName || f.arrival?.airport?.name || '',
+            destinationIata: f.arrival?.airport?.iata || '',
+            departureDate: dep.date,
+            departureTime: dep.time,
+            arrivalDate: arr.date,
+            arrivalTime: arr.time,
+            aircraftModel: f.aircraft?.model || null,
+            departureTerminal: f.departure?.terminal || null,
+            departureGate: f.departure?.gate || null,
+            arrivalTerminal: f.arrival?.terminal || null,
+            status: f.status || 'scheduled',
+        };
+
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(result));
+        return result;
+
     } catch (err: any) {
-    if (err.message === 'API_RATELIMIT_EXCEEDED' || err.message === 'API_FORBIDDEN') {
-        throw err;
+        // Fallback to cache on offline/error
+        try {
+            const cached = await AsyncStorage.getItem(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                return { ...parsed, isOffline: true };
+            }
+        } catch (e) {
+            console.error('Cache read error', e);
+        }
+
+        console.error('Flight lookup failed:', err);
+        return null;
     }
-    console.error('AeroDataBox lookup error:', err);
-    return null;
-}
 }
 
 export interface FlightStatus {
@@ -108,39 +113,59 @@ export interface FlightStatus {
     };
     status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'diverted' | 'unknown';
     delayMinutes?: number;
+    isOffline?: boolean;
 }
 
+// Vercel proxy URL — API key is stored securely as a server-side environment variable
+const VERCEL_FLIGHT_API = 'https://travel-app-rose-one.vercel.app/api/flight';
+
 /**
- * Fetch real-time flight status from AeroDataBox
+ * Fetch real-time flight status via the secure Vercel proxy.
+ * The API key is never exposed to the client.
  */
 export async function getFlightStatus(
     flightNumber: string,
     date: string // Format: YYYY-MM-DD
 ): Promise<FlightStatus | null> {
+    const clean = flightNumber.trim().toUpperCase().replace(/\s/g, '');
+    const cacheKey = `@flight_status_${clean}_${date}`;
+    const tsKey = `${cacheKey}_ts`;
+
+    // Check cache first for cooldown
     try {
-        const response = await fetch(
-            `${AERODATABOX_BASE_URL}/flights/number/${flightNumber}/${date}`,
-            {
-                method: 'GET',
-                headers: {
-                    'X-RapidAPI-Key': AERODATABOX_API_KEY,
-                    'X-RapidAPI-Host': 'aerodatabox.p.rapidapi.com'
-                }
+        const cached = await AsyncStorage.getItem(cacheKey);
+        const lastTs = await AsyncStorage.getItem(tsKey);
+        
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            
+            // If within 10 min cooldown, return cached
+            if (lastTs && (Date.now() - parseInt(lastTs, 10) < 600000)) {
+                return parsed; // returns as live, saving API credits
             }
-        );
+        }
+    } catch (e) {
+        console.error('Cache read error', e);
+    }
+
+    try {
+        const url = `${VERCEL_FLIGHT_API}?flightNumber=${encodeURIComponent(clean)}&date=${encodeURIComponent(date)}`;
+
+        const response = await fetch(url, { method: 'GET' });
 
         if (!response.ok) {
-            console.error('AeroDataBox API error:', response.status);
+            const body = await response.text().catch(() => '(no body)');
+            console.error(`Vercel flight proxy error: ${response.status} — ${body}`);
             return null;
         }
 
         const data = await response.json();
 
-        // AeroDataBox returns an array of flights (same flight number, different dates)
-        const flight = data[0];
+        // AeroDataBox returns an array of flights
+        const flight = Array.isArray(data) ? data[0] : data;
         if (!flight) return null;
 
-        return {
+        const result: FlightStatus = {
             flightNumber: flight.number,
             airline: flight.airline?.name || 'Unknown',
             departure: {
@@ -160,7 +185,20 @@ export async function getFlightStatus(
             status: flight.status || 'unknown',
             delayMinutes: flight.departure?.delay || 0
         };
+
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(result));
+        await AsyncStorage.setItem(tsKey, Date.now().toString());
+        return result;
     } catch (error) {
+        // Fallback to cache on network failure
+        try {
+            const cached = await AsyncStorage.getItem(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                return { ...parsed, isOffline: true };
+            }
+        } catch (e) {}
+
         console.error('Error fetching flight status:', error);
         return null;
     }

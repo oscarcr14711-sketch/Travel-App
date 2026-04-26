@@ -3,6 +3,7 @@ export interface Ticket {
     userId: string;
     title: string;
     type: 'flight' | 'bus' | 'train' | 'other';
+    fileType?: 'pdf' | 'wallet'; // NEW: distinguishes PDF vs .pkpass
     fileUri: string; // Path to the local file
     fileName: string;
     mimeType: string;

@@ -72,6 +72,7 @@ export const pickTicketPDF = async (): Promise<Ticket | null> => {
             userId: 'user_001',
             title: asset.name.replace('.pdf', ''),
             type: 'other',
+            fileType: 'pdf',
             fileUri: destPath,
             fileName: asset.name,
             mimeType: asset.mimeType || 'application/pdf',
@@ -84,6 +85,60 @@ export const pickTicketPDF = async (): Promise<Ticket | null> => {
         return newTicket;
     } catch (error) {
         console.error('Error picking document:', error);
+        throw error;
+    }
+};
+
+/**
+ * Pick an Apple Wallet pass (.pkpass) and create a ticket from it
+ */
+export const pickTicketWallet = async (): Promise<Ticket | null> => {
+    await ensureInitialized();
+
+    try {
+        const result = await DocumentPicker.getDocumentAsync({
+            type: '*/*', // pkpass MIME not universally recognized, open all
+            copyToCacheDirectory: true,
+        });
+
+        if (result.canceled) return null;
+
+        const asset = result.assets[0];
+
+        // Validate it's a .pkpass file
+        if (!asset.name.endsWith('.pkpass')) {
+            throw new Error('Please select a .pkpass file from your files app.');
+        }
+
+        const ticketsDir = `${FileSystem.documentDirectory}tickets/`;
+        const dirInfo = await FileSystem.getInfoAsync(ticketsDir);
+        if (!dirInfo.exists) {
+            await FileSystem.makeDirectoryAsync(ticketsDir, { intermediates: true });
+        }
+
+        const uniqueName = `${Date.now()}_${asset.name}`;
+        const destPath = `${ticketsDir}${uniqueName}`;
+
+        await FileSystem.copyAsync({ from: asset.uri, to: destPath });
+
+        const newTicket: Ticket = {
+            id: `ticket_${Date.now()}`,
+            userId: 'user_001',
+            title: asset.name.replace('.pkpass', ''),
+            type: 'other',
+            fileType: 'wallet',
+            fileUri: destPath,
+            fileName: asset.name,
+            mimeType: 'application/vnd.apple.pkpass',
+            size: asset.size,
+            createdAt: new Date().toISOString(),
+        };
+
+        ticketsStore.push(newTicket);
+        await saveTicketsToStorage(ticketsStore);
+        return newTicket;
+    } catch (error) {
+        console.error('Error picking wallet pass:', error);
         throw error;
     }
 };
